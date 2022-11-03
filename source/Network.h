@@ -24,6 +24,7 @@ public:
 	void SetLearningRate(data_t l);
 private:
 	inline int getPredict();
+	size_t getIdx(size_t x, size_t y, size_t d) const;
 private:
 	std::vector<ILayer*> mLayers;
 	data_t* mInput;
@@ -40,6 +41,7 @@ private:
 
 	size_t mInputLen;
 	size_t mInputSize;
+	size_t mInputDepth;
 	size_t mOutputSize;
 
 	std::vector<size_t> mShuffleIdxs;

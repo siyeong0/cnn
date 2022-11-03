@@ -128,22 +128,24 @@ void ILayer::Update(const size_t batchSize, const data_t learningRate)
 	}
 }
 
-size_t ILayer::getOutIdx(size_t x, size_t y, size_t d) const
-{
-	size_t idx = ((OUTPUT_LEN + 2 * mOutPad) * (y + mOutPad) + (mOutPad + x)) * OUTPUT_DEPTH + d;
-	Assert(idx < (OUTPUT_LEN + 2 * mOutPad) * (OUTPUT_LEN + 2 * mOutPad) * OUTPUT_DEPTH);
-	return idx;
-}
-
 size_t ILayer::getInIdx(size_t x, size_t y, size_t d) const
 {
-	size_t idx = (INPUT_PAD_LEN * y + x) * INPUT_DEPTH + d;
+	//size_t idx = (INPUT_PAD_LEN * y + x) * INPUT_DEPTH + d;
+	size_t idx = INPUT_PAD_LEN * INPUT_PAD_LEN * d + INPUT_PAD_LEN * y + x;
 	Assert(idx < INPUT_SIZE);
+	return idx;
+}
+size_t ILayer::getOutIdx(size_t x, size_t y, size_t d) const
+{
+	//size_t idx = ((OUTPUT_LEN + 2 * mOutPad) * (y + mOutPad) + (mOutPad + x)) * OUTPUT_DEPTH + d;
+	size_t idx = (OUTPUT_LEN + 2 * mOutPad) * (OUTPUT_LEN + 2 * mOutPad) * d + (OUTPUT_LEN + 2 * mOutPad) * y + x;
+	Assert(idx < (OUTPUT_LEN + 2 * mOutPad)* (OUTPUT_LEN + 2 * mOutPad)* OUTPUT_DEPTH);
 	return idx;
 }
 size_t ILayer::getWgtIdx(size_t x, size_t y, size_t inD, size_t outD) const
 {
-	size_t idx = ((KERNEL_LEN * y + x) * INPUT_DEPTH + inD) + KERNEL_LEN * KERNEL_LEN * INPUT_DEPTH * outD;
+	//size_t idx = ((KERNEL_LEN * y + x) * INPUT_DEPTH + inD) + KERNEL_LEN * KERNEL_LEN * INPUT_DEPTH * outD;
+	size_t idx = KERNEL_LEN * KERNEL_LEN * INPUT_DEPTH * outD + KERNEL_LEN * KERNEL_LEN * inD + KERNEL_LEN * y + x;
 	Assert(idx < WGT_SIZE);
 	return idx;
 }
@@ -154,19 +156,22 @@ size_t ILayer::getBiasIdx(size_t outD) const
 }
 size_t ILayer::getDeltaIdx(size_t x, size_t y, size_t d) const
 {
-	size_t idx = (OUTPUT_LEN * y + x) * OUTPUT_DEPTH + d;
+	//size_t idx = (OUTPUT_LEN * y + x) * OUTPUT_DEPTH + d;
+	size_t idx = OUTPUT_LEN * OUTPUT_LEN * d + OUTPUT_LEN * y + x;
 	Assert(idx < DELTA_SIZE);
 	return idx;
 }
 size_t ILayer::getDInIdx(size_t x, size_t y, size_t d) const
 {
-	size_t idx = (OUTPUT_LEN * y + x) * OUTPUT_DEPTH + d;
+	//size_t idx = (OUTPUT_LEN * y + x) * OUTPUT_DEPTH + d;
+	size_t idx = OUTPUT_LEN * OUTPUT_LEN * d + OUTPUT_LEN * y + x;
 	Assert(idx < DELTA_IN_SIZE);
 	return idx;
 }
 size_t ILayer::getDOutIdx(size_t x, size_t y, size_t d) const
 {
-	size_t idx = (INPUT_LEN * y + x) * INPUT_DEPTH + d;
+	//size_t idx = (INPUT_LEN * y + x) * INPUT_DEPTH + d;
+	size_t idx = INPUT_LEN * INPUT_LEN * d + INPUT_LEN * y + x;
 	Assert(idx < DELTA_OUT_SIZE);
 	return idx;
 }

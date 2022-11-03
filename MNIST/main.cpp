@@ -31,17 +31,8 @@ int main(void)
 	FullConnectLayer full120To10(120, 10, EActFn::SIGMOID);
 	net >> conv32x32x1 >> pool28x28x6 >> conv14x14x6 >> pool10x10x16 >> conv5x5x16 >> full120To10 >> ENet::END;
 
-	//ConvLayer conv32x32x1(5, 32, 1, 28, 1, EActFn::RELU);
-	//ConvLayer conv28x28x1(5, 28, 1, 28, 6, EActFn::RELU);
-	//PoolLayer pool28x28x6(2, 28, 6, EActFn::RELU);
-	//ConvLayer conv14x14x6(5, 14, 6, 10, 16, EActFn::RELU);
-	//PoolLayer pool10x10x16(2, 10, 16, EActFn::RELU);
-	//ConvLayer conv5x5x16(5, 5, 16, 1, 120, EActFn::RELU);
-	//FullConnectLayer full120To10(120, 10, EActFn::SIGMOID);
-	//net >> conv32x32x1 >> conv28x28x1 >> pool28x28x6 >> conv14x14x6 >> pool10x10x16 >> conv5x5x16 >> full120To10 >> ENet::END;
-
 	net.SetBatchSize(8);
-	net.SetEpochSize(60000);
+	net.SetEpochSize(10000);
 	net.SetLearningRate(0.02f);
 	net.SetData(trainDatas, 28, trainLabels, 60000);
 	net.Fit();

@@ -56,7 +56,7 @@ void FullConnectLayer::BackProp()
 	memset(mDeltaOut, 0, sizeof(data_t) * INPUT_SIZE);
 	for (size_t y = 0; y < OUTPUT_SIZE; ++y)
 	{
-		data_t delta = mDeltaIn[y];
+		data_t delta = mDelta[y];
 		for (size_t x = 0; x < INPUT_SIZE; ++x)
 		{
 			data_t in = mIn[x];
@@ -68,7 +68,7 @@ void FullConnectLayer::BackProp()
 
 	for (size_t y = 0; y < OUTPUT_SIZE; ++y)
 	{
-		mBiasDiff[y] += mDeltaIn[y];
+		mBiasDiff[y] += mDelta[y];
 	}
 }
 

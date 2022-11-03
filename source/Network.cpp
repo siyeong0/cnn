@@ -29,13 +29,14 @@ Network& operator>>(Network& net, ENet e)
 	{
 		ILayer& curr = *(net.mLayers[i]);
 		ILayer& next = *(net.mLayers[i + 1]);
-		Assert(curr.OUTPUT_DEPTH == next.INPUT_DEPTH);
+		//Assert(curr.OUTPUT_DEPTH == next.INPUT_DEPTH);
 		curr.mOut = next.mIn;
 		curr.mDeltaIn = next.mDeltaOut;
 		curr.mOutPad = next.NUM_PAD;
 		int a = 3;
 	}
-	net.mInputLen = static_cast<size_t>(sqrt(head.INPUT_SIZE)) - 2 * head.NUM_PAD;
+	net.mInputLen = head.INPUT_PAD_LEN;
+	net.mInputDepth = head.INPUT_DEPTH;
 	net.mInputSize = net.mInputLen * net.mInputLen;
 	net.mOutputSize = tail.OUTPUT_SIZE;
 	net.mNumPad = head.NUM_PAD;
@@ -55,6 +56,7 @@ Network::Network()
 	, mLearningRate(0.f)
 	, mInputLen(0)
 	, mInputSize(0)
+	, mInputDepth(0)
 	, mOutputSize(0)
 	, mNumPad(0)
 {
@@ -68,14 +70,23 @@ Network::~Network()
 
 void Network::Fit()
 {
+	if (mEpoch % mBatch != 0)
+	{
+		abort();
+	}
 	std::random_device rd;
 	std::mt19937 g(rd());
 	size_t numLayers = mLayers.size();
 	int c = 0;
+	std::shuffle(mShuffleIdxs.begin(), mShuffleIdxs.end(), g);
+	size_t shIdx = 0;
 	for (size_t e = 0; e < mEpoch; ++e)
 	{
-		std::shuffle(mShuffleIdxs.begin(), mShuffleIdxs.end(), g);
-		size_t shIdx = 0;
+		if (shIdx >= mShuffleIdxs.size())
+		{
+			shIdx = 0;
+			std::shuffle(mShuffleIdxs.begin(), mShuffleIdxs.end(), g);
+		}
 		for (size_t i = 0; i < numLayers; ++i)
 		{
 			mLayers[i]->InitBatch();
@@ -89,27 +100,33 @@ void Network::Fit()
 			}
 			// Copy input
 			data_t* data = mData + currIdx * mInputSize;
-			size_t offset = 0;
-			memset(mInput, 0, sizeof(data_t) * (mInputLen + 2 * mNumPad) * (mInputLen + 2 * mNumPad));
-			offset += (mInputLen + 2 * mNumPad) * mNumPad;
+			memset(mInput, 0, sizeof(data_t) * (mInputLen + 2 * mNumPad) * (mInputLen + 2 * mNumPad) * mInputDepth);
 			for (size_t y = 0; y < mInputLen; ++y)
 			{
-				offset += mNumPad;
-				memcpy(&mInput[offset], data + (y * mInputLen), sizeof(data_t) * mInputLen);
-				offset += mInputLen + mNumPad;
+				for (size_t x = 0; x < mInputLen; ++x)
+				{
+					for (size_t d = 0; d < mInputDepth; ++d)
+					{
+						int ii = getIdx(x, y, d);
+						mInput[getIdx(x, y, d)] = data[mInputLen * mInputLen * d + y * mInputLen + x];
+					}
+				}
 			}
 			int label = static_cast<int>(mLabels[currIdx]);
 
 			//Print code for debug
-			//for (size_t y = 0; y < mInputLen + 2 * mNumPad; y++)
+			//for (size_t d = 0; d < mInputDepth; d++)
 			//{
-			//	for (size_t x = 0; x < mInputLen + 2 * mNumPad; x++)
+			//	for (size_t y = 0; y < mInputLen + 2 * mNumPad; y++)
 			//	{
-			//		std::cout << (int)(mInput[(mInputLen + 2 * mNumPad) * y + x]+0.5) << " ";
+			//		for (size_t x = 0; x < mInputLen + 2 * mNumPad; x++)
+			//		{
+			//			std::cout << (int)(mInput[(mInputLen + 2 * mNumPad) * (mInputLen + 2 * mNumPad) * d + (mInputLen + 2 * mNumPad) * y + x] + 0.5) << " ";
+			//		}
+			//		std::cout << std::endl;
 			//	}
 			//	std::cout << std::endl;
 			//}
-			//std::cout << std::endl;
 
 			for (size_t i = 0; i < numLayers; ++i)
 			{
@@ -131,6 +148,8 @@ void Network::Fit()
 				size_t idx = numLayers - i - 1;
 				mLayers[idx]->BackProp();
 			}
+
+			//std::cout << label << "," << pr << std::endl;
 		}
 		for (size_t i = 0; i < numLayers; i++)
 		{
@@ -160,16 +179,20 @@ data_t Network::GetAccuracy(data_t* data, char* labels, size_t n)
 	size_t numLayers = mLayers.size();
 	for (size_t i = 0; i < n; ++i)
 	{
-		size_t offset = 0;
-		memset(mInput, 0, sizeof(data_t) * (mInputLen + 2 * mNumPad) * (mInputLen + 2 * mNumPad));
-		offset += (mInputLen + 2 * mNumPad) * mNumPad;
+		data_t* data = mData + i * mInputSize;
+		memset(mInput, 0, sizeof(data_t) * (mInputLen + 2 * mNumPad) * (mInputLen + 2 * mNumPad) * mInputDepth);
 		for (size_t y = 0; y < mInputLen; ++y)
 		{
-			offset += mNumPad;
-			memcpy(&mInput[offset], data + (y * mInputLen), sizeof(data_t) * mInputLen);
-			offset += mInputLen + mNumPad;
+			for (size_t x = 0; x < mInputLen; ++x)
+			{
+				for (size_t d = 0; d < mInputDepth; ++d)
+				{
+					int ii = getIdx(x, y, d);
+					mInput[getIdx(x, y, d)] = data[mInputLen * mInputLen * d + y * mInputLen + x];
+				}
+			}
 		}
-		int label = static_cast<int>(labels[i]);
+		int label = static_cast<int>(mLabels[i]);;
 
 		for (size_t i = 0; i < numLayers; ++i)
 		{
@@ -232,3 +255,10 @@ int Network::getPredict()
 	}
 	return idx;
 }
+
+size_t Network::getIdx(size_t x, size_t y, size_t d) const
+{
+	//size_t idx = ((mInputLen + 2 * mNumPad) * (mNumPad + y) + (mNumPad + x)) * mInputDepth + d;
+	size_t idx = (mInputLen + 2 * mNumPad) * (mInputLen + 2 * mNumPad) * d + (mInputLen + 2 * mNumPad) * (mNumPad + y) + (mNumPad + x);
+	return idx;
+};
