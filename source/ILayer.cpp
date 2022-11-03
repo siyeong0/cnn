@@ -3,9 +3,9 @@
 
 static data_t gaussianRandom(data_t average, data_t stdev)
 {
-	data_t v1;
-	data_t v2;
-	data_t s;
+	data_t v1 = 0.f;
+	data_t v2 = 0.f;
+	data_t s = 0.f;
 	do
 	{
 		v1 = 2 * ((data_t)rand() / RAND_MAX) - 1;
@@ -32,9 +32,10 @@ ILayer::ILayer(size_t kernelLen, size_t inLen, size_t inDepth, size_t outLen, si
 	, mDeltaOut(nullptr)
 	, meActFn(eActFn)
 	, NUM_PAD(inLen == outLen ? (kernelLen - 1) / 2 : 0)
-	, INPUT_LEN(inLen + 2 * NUM_PAD)
+	, INPUT_LEN(inLen)
+	, INPUT_PAD_LEN(INPUT_LEN + 2 * NUM_PAD)
 	, INPUT_DEPTH(inDepth)
-	, INPUT_SIZE(INPUT_LEN* INPUT_LEN* INPUT_DEPTH)
+	, INPUT_SIZE(INPUT_PAD_LEN * INPUT_PAD_LEN* INPUT_DEPTH)
 	, OUTPUT_LEN(outLen)
 	, OUTPUT_DEPTH(outDepth)
 	, OUTPUT_SIZE(OUTPUT_LEN* OUTPUT_LEN* OUTPUT_DEPTH)
@@ -42,18 +43,22 @@ ILayer::ILayer(size_t kernelLen, size_t inLen, size_t inDepth, size_t outLen, si
 	, KERNEL_SIZE(KERNEL_LEN* KERNEL_LEN)
 	, DELTA_SIZE(OUTPUT_SIZE)
 	, DELTA_IN_SIZE(OUTPUT_SIZE)
-	, DELTA_OUT_SIZE(INPUT_SIZE)
+	, DELTA_OUT_SIZE(INPUT_LEN * INPUT_LEN * INPUT_DEPTH)
 	, WGT_SIZE(KERNEL_SIZE * INPUT_DEPTH* OUTPUT_DEPTH)
 	, BIAS_SIZE(OUTPUT_DEPTH)
 	, mActivate(nullptr)
+	, mOutPad(0)
 {
 	mIn = Alloc<data_t>(INPUT_SIZE);
+	memset(mIn, 0, sizeof(data_t) * INPUT_SIZE);
 	mWgt = Alloc<data_t>(WGT_SIZE);
 	mWgtDiff = Alloc<data_t>(WGT_SIZE);
 	mBias = Alloc<data_t>(BIAS_SIZE);
 	mBiasDiff = Alloc<data_t>(BIAS_SIZE);
 	mDelta = Alloc<data_t>(DELTA_SIZE);
+	memset(mDelta, 0, sizeof(data_t) * DELTA_SIZE);
 	mDeltaOut = Alloc<data_t>(DELTA_OUT_SIZE);
+	memset(mDeltaOut, 0, sizeof(data_t) * DELTA_OUT_SIZE);
 
 	srand(time(NULL));
 	for (size_t i = 0; i < WGT_SIZE; ++i)
@@ -113,19 +118,55 @@ void ILayer::Update(const size_t batchSize, const data_t learningRate)
 	for (size_t i = 0; i < WGT_SIZE; ++i)
 	{
 		data_t dw = mWgtDiff[i] / batchSize;
-		data_t v1 = 0.1f * dw;
-		data_t v2 = 0.001f * dw * dw;
-		data_t sw = alpha * (v1 / (1 - 0.1f)) / sqrt(v2 / (1 - 0.001f) + 0.000001f);
-		mWgt[i] -= sw;
+		mWgt[i] -= dw;
 	}
 
 	for (size_t i = 0; i < BIAS_SIZE; ++i)
 	{
 		data_t dw = mBiasDiff[i] / batchSize;
-		data_t v1 = 0.1f * dw;
-		data_t v2 = 0.001f * dw * dw;
-		data_t sw = alpha * (v1 / (1 - 0.1f)) / sqrt(v2 / (1 - 0.001f) + 0.000001f);
-		mWgt[i] -= sw;
-		mBias[i] -= sw;
+		mBias[i] -= dw;
 	}
+}
+
+size_t ILayer::getOutIdx(size_t x, size_t y, size_t d) const
+{
+	size_t idx = ((OUTPUT_LEN + 2 * mOutPad) * (y + mOutPad) + (mOutPad + x)) * OUTPUT_DEPTH + d;
+	Assert(idx < (OUTPUT_LEN + 2 * mOutPad) * (OUTPUT_LEN + 2 * mOutPad) * OUTPUT_DEPTH);
+	return idx;
+}
+
+size_t ILayer::getInIdx(size_t x, size_t y, size_t d) const
+{
+	size_t idx = (INPUT_PAD_LEN * y + x) * INPUT_DEPTH + d;
+	Assert(idx < INPUT_SIZE);
+	return idx;
+}
+size_t ILayer::getWgtIdx(size_t x, size_t y, size_t inD, size_t outD) const
+{
+	size_t idx = ((KERNEL_LEN * y + x) * INPUT_DEPTH + inD) + KERNEL_LEN * KERNEL_LEN * INPUT_DEPTH * outD;
+	Assert(idx < WGT_SIZE);
+	return idx;
+}
+size_t ILayer::getBiasIdx(size_t outD) const
+{
+	Assert(outD < OUTPUT_DEPTH);
+	return outD;
+}
+size_t ILayer::getDeltaIdx(size_t x, size_t y, size_t d) const
+{
+	size_t idx = (OUTPUT_LEN * y + x) * OUTPUT_DEPTH + d;
+	Assert(idx < DELTA_SIZE);
+	return idx;
+}
+size_t ILayer::getDInIdx(size_t x, size_t y, size_t d) const
+{
+	size_t idx = (OUTPUT_LEN * y + x) * OUTPUT_DEPTH + d;
+	Assert(idx < DELTA_IN_SIZE);
+	return idx;
+}
+size_t ILayer::getDOutIdx(size_t x, size_t y, size_t d) const
+{
+	size_t idx = (INPUT_LEN * y + x) * INPUT_DEPTH + d;
+	Assert(idx < DELTA_OUT_SIZE);
+	return idx;
 }

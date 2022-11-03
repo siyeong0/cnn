@@ -16,8 +16,6 @@ ConvLayer::~ConvLayer()
 
 void ConvLayer::Forward()
 {
-	// TODO : 6Padding
-
 	for (size_t outD = 0; outD < OUTPUT_DEPTH; ++outD)
 	{
 		for (size_t outY = 0; outY < OUTPUT_LEN; ++outY)
@@ -72,11 +70,11 @@ void ConvLayer::BackProp()
 		}
 	}
 
-	for (size_t y = 0; y < KERNEL_LEN; ++y)
+	for (size_t kY = 0; kY < KERNEL_LEN; ++kY)
 	{
-		for (size_t x = 0; x < KERNEL_LEN; ++x)
+		for (size_t kX = 0; kX < KERNEL_LEN; ++kX)
 		{
-			for (size_t d = 0; d < INPUT_DEPTH; ++d)
+			for (size_t inD = 0; inD < INPUT_DEPTH; ++inD)
 			{
 
 				for (size_t outD = 0; outD < OUTPUT_DEPTH; ++outD)
@@ -87,31 +85,33 @@ void ConvLayer::BackProp()
 						for (size_t outX = 0; outX < OUTPUT_LEN; ++outX)
 						{
 							data_t delta = mDelta[getDeltaIdx(outX, outY, outD)];
-							data_t valIn = mIn[getInIdx(outX + x, outY + y, d)];
+							data_t valIn = mIn[getInIdx(outX + kX, outY + kY, inD)];
 							sum += delta * valIn;
 						}
 					}
-					mWgtDiff[getWgtIdx(x, y, d, outD)] += sum;
+					mWgtDiff[getWgtIdx(kX, kY, inD, outD)] += sum;
 				}
 			}
 		}
 	}
 
-	if (NUM_PAD == 0)
+	memset(mDeltaOut, 0, sizeof(data_t) * DELTA_OUT_SIZE);
+	// TODO : ?
+	/*if (NUM_PAD == 0)
 	{
-		for (size_t inY = 0; inY < INPUT_LEN; ++inY)
+		for (size_t inY = 0; inY < INPUT_PAD_LEN; ++inY)
 		{
-			for (size_t inX = 0; inX < INPUT_LEN; ++inX)
+			for (size_t inX = 0; inX < INPUT_PAD_LEN; ++inX)
 			{
 				for (size_t inD = 0; inD < INPUT_DEPTH; ++inD)
 				{
 					data_t sum = 0.f;
-					for (size_t y = 0; y < KERNEL_LEN; ++y)
+					for (size_t kY = 0; kY < KERNEL_LEN; ++kY)
 					{
-						for (size_t x = 0; x < KERNEL_LEN; ++x)
+						for (size_t kX = 0; kX < KERNEL_LEN; ++kX)
 						{
-							size_t outX = inX - x;
-							size_t outY = inY - y;
+							size_t outX = inX - kX;
+							size_t outY = inY - kY;
 							if (outX >= OUTPUT_LEN || outY >= OUTPUT_LEN)
 							{
 								continue;
@@ -119,7 +119,7 @@ void ConvLayer::BackProp()
 							for (size_t outD = 0; outD < OUTPUT_DEPTH; ++outD)
 							{
 								data_t delta = mDelta[getDeltaIdx(outX, outY, outD)];
-								data_t wgt = mWgt[getWgtIdx(x,y,inD,outD)];
+								data_t wgt = mWgt[getWgtIdx(kX,kY,inD,outD)];
 								sum += delta * wgt;
 							}
 						}
@@ -138,14 +138,14 @@ void ConvLayer::BackProp()
 				for (size_t inD = 0; inD < INPUT_DEPTH; ++inD)
 				{
 					data_t sum = 0.f;
-					for (size_t y = 0; y < KERNEL_LEN; ++y)
+					for (size_t kY = 0; kY < KERNEL_LEN; ++kY)
 					{
-						for (size_t x = 0; x < KERNEL_LEN; ++x)
+						for (size_t kX = 0; kX < KERNEL_LEN; ++kX)
 						{
 							for (size_t outD = 0; outD < OUTPUT_DEPTH; ++outD)
 							{
 								data_t delta = mDelta[getDeltaIdx(outX, outY, outD)];
-								data_t wgt = mWgt[getWgtIdx(x, y, inD, outD)];
+								data_t wgt = mWgt[getWgtIdx(kX, kY, inD, outD)];
 								sum += delta * wgt;
 							}
 						}
@@ -154,8 +154,30 @@ void ConvLayer::BackProp()
 				}
 			}
 		}
-	}
+	}*/
 
+
+	for (size_t outD = 0; outD < OUTPUT_DEPTH; ++outD)
+	{
+		for (size_t outY = 0; outY < OUTPUT_LEN; ++outY)
+		{
+			for (size_t outX = 0; outX < OUTPUT_LEN; ++outX)
+			{
+				data_t delta = mDelta[getDeltaIdx(outX, outY, outD)];
+				for (size_t inD = 0; inD < INPUT_DEPTH; ++inD)
+				{
+					for (size_t kY = 0; kY < KERNEL_LEN; ++kY)
+					{
+						for (size_t kX = 0; kX < KERNEL_LEN; ++kX)
+						{
+							data_t wgt = mWgt[getWgtIdx(kX, kY, inD, outD)];
+							mDeltaOut[getDOutIdx(outX, outY, inD)] += wgt * delta;
+						}
+					}
+				}
+			}
+		}
+	}
 
 	for (size_t outD = 0; outD < OUTPUT_DEPTH; ++outD)
 	{
@@ -169,40 +191,4 @@ void ConvLayer::BackProp()
 		}
 		mBiasDiff[outD] += sum;
 	}
-}
-
-size_t ConvLayer::getInIdx(size_t x, size_t y, size_t d) const
-{
-	Assert(((INPUT_LEN * y + x) * INPUT_DEPTH + d) < INPUT_SIZE);
-	return (INPUT_LEN * y + x) * INPUT_DEPTH + d;
-}
-size_t ConvLayer::getOutIdx(size_t x, size_t y, size_t d) const
-{
-	Assert(((OUTPUT_LEN * y + x) * OUTPUT_DEPTH + d) < OUTPUT_LEN * OUTPUT_LEN * OUTPUT_DEPTH);
-	return (OUTPUT_LEN * y + x) * OUTPUT_DEPTH + d;
-}
-size_t ConvLayer::getWgtIdx(size_t x, size_t y, size_t inD, size_t outD) const
-{
-	Assert((((KERNEL_LEN * y + x) * INPUT_DEPTH + inD) + KERNEL_LEN * KERNEL_LEN * INPUT_DEPTH * outD) < WGT_SIZE);
-	return ((KERNEL_LEN * y + x) * INPUT_DEPTH + inD) + KERNEL_LEN * KERNEL_LEN * INPUT_DEPTH * outD;
-}
-size_t ConvLayer::getBiasIdx(size_t outD) const
-{
-	Assert(outD < OUTPUT_DEPTH);
-	return outD;
-}
-size_t ConvLayer::getDeltaIdx(size_t x, size_t y, size_t d) const
-{
-	Assert(((OUTPUT_LEN * y + x) * OUTPUT_DEPTH + d) < DELTA_SIZE);
-	return getOutIdx(x, y, d);
-}
-size_t ConvLayer::getDInIdx(size_t x, size_t y, size_t d) const
-{
-	Assert(((OUTPUT_LEN * y + x) * OUTPUT_DEPTH + d) <DELTA_IN_SIZE);
-	return getOutIdx(x, y, d);
-}
-size_t ConvLayer::getDOutIdx(size_t x, size_t y, size_t d) const
-{
-	Assert(((INPUT_LEN * y + x) * INPUT_DEPTH + d) < DELTA_OUT_SIZE);
-	return (INPUT_LEN * y + x) * INPUT_DEPTH + d;
 }

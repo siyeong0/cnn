@@ -51,7 +51,15 @@ public:
 	void InitBatch();
 
 	void Update(const size_t batchSize, const data_t learningRate);
-public:
+protected:
+	size_t getOutIdx(size_t x, size_t y, size_t d) const;
+	size_t getInIdx(size_t x, size_t y, size_t d) const;
+	size_t getWgtIdx(size_t x, size_t y, size_t inD, size_t outD) const;
+	size_t getBiasIdx(size_t outD) const;
+	size_t getDeltaIdx(size_t x, size_t y, size_t d) const;
+	size_t getDInIdx(size_t x, size_t y, size_t d) const;
+	size_t getDOutIdx(size_t x, size_t y, size_t d) const;
+protected:
 	data_t* mIn;
 	data_t* mOut;
 	data_t* mWgt;
@@ -65,9 +73,10 @@ public:
 
 	EActFn meActFn;
 	std::function<data_t(data_t)> mActivate;
-public:
+protected:
 	const size_t NUM_PAD;
 	const size_t INPUT_LEN;
+	const size_t INPUT_PAD_LEN;
 	const size_t INPUT_DEPTH;
 	const size_t INPUT_SIZE;
 	const size_t OUTPUT_LEN;
@@ -80,4 +89,5 @@ public:
 	const size_t DELTA_OUT_SIZE;
 	const size_t WGT_SIZE;
 	const size_t BIAS_SIZE;
+	size_t mOutPad;
 };

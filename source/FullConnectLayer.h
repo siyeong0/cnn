@@ -10,5 +10,5 @@ public:
 	void Forward() override;
 	void BackProp() override;
 private:
-	inline size_t getIdx(size_t x, size_t y) const;
+	size_t getIdx(size_t x, size_t y) const;
 };

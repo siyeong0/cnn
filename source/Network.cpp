@@ -19,18 +19,21 @@ Network& operator>>(Network& net, ENet e)
 
 	ILayer& head = *(net.mLayers[0]);
 	ILayer& tail = *(net.mLayers[size - 1]);
-
 	net.mInput = head.mIn;
 	net.mOutput = Alloc<data_t>(tail.OUTPUT_SIZE);
 	tail.mOut = net.mOutput;
 	net.mDeltaIn = Alloc<data_t>(tail.OUTPUT_SIZE);
 	tail.mDeltaIn = net.mDeltaIn;
+
 	for (size_t i = 0; i < size - 1; ++i)
 	{
 		ILayer& curr = *(net.mLayers[i]);
 		ILayer& next = *(net.mLayers[i + 1]);
+		Assert(curr.OUTPUT_DEPTH == next.INPUT_DEPTH);
 		curr.mOut = next.mIn;
 		curr.mDeltaIn = next.mDeltaOut;
+		curr.mOutPad = next.NUM_PAD;
+		int a = 3;
 	}
 	net.mInputLen = static_cast<size_t>(sqrt(head.INPUT_SIZE)) - 2 * head.NUM_PAD;
 	net.mInputSize = net.mInputLen * net.mInputLen;
@@ -50,6 +53,7 @@ Network::Network()
 	, mBatch(0)
 	, mEpoch(0)
 	, mLearningRate(0.f)
+	, mInputLen(0)
 	, mInputSize(0)
 	, mOutputSize(0)
 	, mNumPad(0)
@@ -143,7 +147,7 @@ void Network::Fit()
 			double prog = (double)(e + 1) / mEpoch;
 			prog *= 100;
 			system("cls");
-			std::cout << (int)prog << "%  " << ((double)c / (mBatch * (e - es +1)) * 100);
+			std::cout << (int)prog << "%  " << ((double)c / (mBatch * (e - es + 1)) * 100) << std::endl;
 			es = e;
 			c = 0;
 		}
@@ -192,7 +196,7 @@ void Network::SetData(data_t* td, size_t len, char* ld, size_t n)
 	mInputSize = mInputLen * mInputLen;
 	mShuffleIdxs.clear();
 	mShuffleIdxs.reserve(mNumBlocks);
-	for (int i = 0; i < mNumBlocks; i++)
+	for (size_t i = 0; i < mNumBlocks; i++)
 	{
 		mShuffleIdxs.push_back(i);
 	}

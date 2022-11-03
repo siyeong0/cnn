@@ -1,5 +1,5 @@
 #include "PoolLayer.h"
-
+#include <iostream>
 PoolLayer::PoolLayer(size_t kernelSize, size_t inLen, size_t depth, EActFn eActFn)
 	: ILayer(kernelSize, inLen, depth, inLen / kernelSize, depth, eActFn)
 	, mMaxIdxBuf(nullptr)
@@ -32,9 +32,8 @@ void PoolLayer::Forward()
 				if (v2 > maxVal) { maxVal = v2; maxIdx = 0x2; }
 				if (v3 > maxVal) { maxVal = v3; maxIdx = 0x3; }
 				Assert(maxIdx < 4);
-				size_t oIdx = getOutIdx(outX, outY, outD);
-				mOut[oIdx] = mActivate(maxVal);
-				mMaxIdxBuf[oIdx] = maxIdx;
+				mOut[getOutIdx(outX, outY, outD)] = mActivate(maxVal);
+				mMaxIdxBuf[getMIBufIdx(outX, outY, outD)] = maxIdx;
 			}
 		}
 	}
@@ -49,52 +48,22 @@ void PoolLayer::BackProp()
 		{
 			for (size_t outD = 0; outD < OUTPUT_DEPTH; ++outD)
 			{
-				size_t oIdx = getOutIdx(outX, outY, outD);
-				data_t outVal = mOut[oIdx];
-				size_t maxIdx = mMaxIdxBuf[oIdx];
+				data_t outVal = mOut[getOutIdx(outX, outY, outD)];
+				size_t maxIdx = mMaxIdxBuf[getMIBufIdx(outX, outY, outD)];
 				size_t inX = outX * 2 + (maxIdx & 1);
 				size_t inY = outY * 2 + (maxIdx >> 1);
 				data_t deltaIn = mDeltaIn[getDInIdx(outX, outY, outD)];
 				Assert(meActFn == EActFn::RELU);
 				data_t deriv = outVal > 0.f ? 1 : 0;
-				mDeltaOut[getInIdx(inX, inY, outD)] = deriv * deltaIn;
+				mDeltaOut[getDOutIdx(inX, inY, outD)] = deriv * deltaIn;
 			}
 		}
 	}
 }
 
-size_t PoolLayer::getInIdx(size_t x, size_t y, size_t d) const
+size_t PoolLayer::getMIBufIdx(size_t x, size_t y, size_t d) const
 {
-	Assert(((INPUT_LEN * y + x) * INPUT_DEPTH + d) < INPUT_SIZE);
-	return (INPUT_LEN * y + x) * INPUT_DEPTH + d;
-}
-size_t PoolLayer::getOutIdx(size_t x, size_t y, size_t d) const
-{
-	Assert(((OUTPUT_LEN * y + x) * OUTPUT_DEPTH + d) < OUTPUT_LEN * OUTPUT_LEN * OUTPUT_DEPTH);
-	return (OUTPUT_LEN * y + x) * OUTPUT_DEPTH + d;
-}
-size_t PoolLayer::getWgtIdx(size_t x, size_t y, size_t inD, size_t outD) const
-{
-	Assert((((KERNEL_LEN * y + x) * INPUT_DEPTH + inD) + KERNEL_LEN * KERNEL_LEN * INPUT_DEPTH * outD) < WGT_SIZE);
-	return ((KERNEL_LEN * y + x) * INPUT_DEPTH + inD) + KERNEL_LEN * KERNEL_LEN * INPUT_DEPTH * outD;
-}
-size_t PoolLayer::getBiasIdx(size_t outD) const
-{
-	Assert(outD < OUTPUT_DEPTH);
-	return outD;
-}
-size_t PoolLayer::getDeltaIdx(size_t x, size_t y, size_t d) const
-{
-	Assert(((OUTPUT_LEN * y + x) * OUTPUT_DEPTH + d) < DELTA_SIZE);
-	return getOutIdx(x, y, d);
-}
-size_t PoolLayer::getDInIdx(size_t x, size_t y, size_t d) const
-{
-	Assert(((OUTPUT_LEN * y + x) * OUTPUT_DEPTH + d) < DELTA_IN_SIZE);
-	return getOutIdx(x, y, d);
-}
-size_t PoolLayer::getDOutIdx(size_t x, size_t y, size_t d) const
-{
-	Assert(((INPUT_LEN * y + x) * INPUT_DEPTH + d) < DELTA_OUT_SIZE);
-	return (INPUT_LEN * y + x) * INPUT_DEPTH + d;
+	size_t idx = (OUTPUT_LEN * y + x) * OUTPUT_DEPTH + d;
+	Assert(idx < OUTPUT_SIZE);
+	return idx;
 }

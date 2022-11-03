@@ -13,6 +13,7 @@ FullConnectLayer::~FullConnectLayer()
 
 void FullConnectLayer::Forward()
 {
+	Assert(mOutPad == 0);
 	for (size_t y = 0; y < OUTPUT_SIZE; ++y)
 	{
 		data_t sum = 0.f;
@@ -26,6 +27,7 @@ void FullConnectLayer::Forward()
 }
 void FullConnectLayer::BackProp()
 {
+	Assert(mOutPad == 0);
 	for (size_t y = 0; y < OUTPUT_SIZE; ++y)
 	{
 		data_t deltaIn = mDeltaIn[y];
@@ -64,7 +66,7 @@ void FullConnectLayer::BackProp()
 		}
 	}
 
-for (size_t y = 0; y < OUTPUT_SIZE; ++y)
+	for (size_t y = 0; y < OUTPUT_SIZE; ++y)
 	{
 		mBiasDiff[y] += mDeltaIn[y];
 	}
