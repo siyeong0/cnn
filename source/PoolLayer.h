@@ -7,10 +7,10 @@ public:
 	PoolLayer(size_t kernelSize, size_t inLen, size_t depth, EActFn eActFn);
 	~PoolLayer();
 
-	void Forward() override;
-	void BackProp() override;
+	void Forward(size_t threadIdx) override;
+	void BackProp(size_t threadIdx) override;
 private:
 	size_t getMIBufIdx(size_t x, size_t y, size_t d) const;
 private:
-	size_t* mMaxIdxBuf;
+	std::vector<size_t*> mMaxIdxBuf;
 };

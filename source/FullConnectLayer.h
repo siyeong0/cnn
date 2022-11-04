@@ -7,8 +7,6 @@ public:
 	FullConnectLayer(size_t inSize, size_t outSize, EActFn eActFn);
 	~FullConnectLayer();
 
-	void Forward() override;
-	void BackProp() override;
-private:
-	size_t getIdx(size_t x, size_t y) const;
+	void Forward(size_t threadIdx) override;
+	void BackProp(size_t threadIdx) override;
 };

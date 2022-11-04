@@ -31,12 +31,12 @@ int main(void)
 	FullConnectLayer full120To10(120, 10, EActFn::SIGMOID);
 	net >> conv32x32x1 >> pool28x28x6 >> conv14x14x6 >> pool10x10x16 >> conv5x5x16 >> full120To10 >> ENet::END;
 
-	net.SetBatchSize(8);
+	net.SetBatchSize(16);
 	net.SetEpochSize(10000);
-	net.SetLearningRate(0.02f);
+	net.SetLearningRate(0.5f);
 	net.SetData(trainDatas, 28, trainLabels, 60000);
 	net.Fit();
-	std::cout << std::endl << net.GetAccuracy(testDatas, testLabels, 10000);
+	std::cout << std::endl << net.GetAccuracy(trainDatas, trainLabels, 10000);
 
 	delete[] trainDatas;
 	delete[] trainLabels;

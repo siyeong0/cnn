@@ -21,21 +21,21 @@ static data_t gaussianRandom(data_t average, data_t stdev)
 }
 
 ILayer::ILayer(size_t kernelLen, size_t inLen, size_t inDepth, size_t outLen, size_t outDepth, EActFn eActFn)
-	: mIn(nullptr)
-	, mOut(nullptr)
+	: mIn()
+	, mOut()
 	, mWgt(nullptr)
 	, mBias(nullptr)
-	, mWgtDiff(nullptr)
-	, mBiasDiff(nullptr)
-	, mDelta(nullptr)
-	, mDeltaIn(nullptr)
-	, mDeltaOut(nullptr)
+	, mWgtDiff()
+	, mBiasDiff()
+	, mDelta()
+	, mDeltaIn()
+	, mDeltaOut()
 	, meActFn(eActFn)
 	, NUM_PAD(inLen == outLen ? (kernelLen - 1) / 2 : 0)
 	, INPUT_LEN(inLen)
 	, INPUT_PAD_LEN(INPUT_LEN + 2 * NUM_PAD)
 	, INPUT_DEPTH(inDepth)
-	, INPUT_SIZE(INPUT_PAD_LEN * INPUT_PAD_LEN* INPUT_DEPTH)
+	, INPUT_SIZE(INPUT_PAD_LEN* INPUT_PAD_LEN* INPUT_DEPTH)
 	, OUTPUT_LEN(outLen)
 	, OUTPUT_DEPTH(outDepth)
 	, OUTPUT_SIZE(OUTPUT_LEN* OUTPUT_LEN* OUTPUT_DEPTH)
@@ -43,22 +43,27 @@ ILayer::ILayer(size_t kernelLen, size_t inLen, size_t inDepth, size_t outLen, si
 	, KERNEL_SIZE(KERNEL_LEN* KERNEL_LEN)
 	, DELTA_SIZE(OUTPUT_SIZE)
 	, DELTA_IN_SIZE(OUTPUT_SIZE)
-	, DELTA_OUT_SIZE(INPUT_LEN * INPUT_LEN * INPUT_DEPTH)
-	, WGT_SIZE(KERNEL_SIZE * INPUT_DEPTH* OUTPUT_DEPTH)
+	, DELTA_OUT_SIZE(INPUT_LEN* INPUT_LEN* INPUT_DEPTH)
+	, WGT_SIZE(KERNEL_SIZE* INPUT_DEPTH* OUTPUT_DEPTH)
 	, BIAS_SIZE(OUTPUT_DEPTH)
 	, mActivate(nullptr)
 	, mOutPad(0)
 {
-	mIn = Alloc<data_t>(INPUT_SIZE);
-	memset(mIn, 0, sizeof(data_t) * INPUT_SIZE);
+	for (size_t i = 0; i < NUM_THREAD; ++i)
+	{
+		mIn.push_back(Alloc<data_t>(INPUT_SIZE));
+		mWgtDiff.push_back(Alloc<data_t>(WGT_SIZE));
+		mBiasDiff.push_back(Alloc<data_t>(BIAS_SIZE));
+		mDelta.push_back(Alloc<data_t>(DELTA_SIZE));
+		mDeltaOut.push_back(Alloc<data_t>(DELTA_OUT_SIZE));
+		memset(mIn[i], 0, sizeof(data_t) * INPUT_SIZE);
+		memset(mDelta[i], 0, sizeof(data_t) * DELTA_SIZE);
+		memset(mDeltaOut[i], 0, sizeof(data_t) * DELTA_OUT_SIZE);
+	}
+
+	// Initialize parameters
 	mWgt = Alloc<data_t>(WGT_SIZE);
-	mWgtDiff = Alloc<data_t>(WGT_SIZE);
 	mBias = Alloc<data_t>(BIAS_SIZE);
-	mBiasDiff = Alloc<data_t>(BIAS_SIZE);
-	mDelta = Alloc<data_t>(DELTA_SIZE);
-	memset(mDelta, 0, sizeof(data_t) * DELTA_SIZE);
-	mDeltaOut = Alloc<data_t>(DELTA_OUT_SIZE);
-	memset(mDeltaOut, 0, sizeof(data_t) * DELTA_OUT_SIZE);
 
 	srand(time(NULL));
 	for (size_t i = 0; i < WGT_SIZE; ++i)
@@ -70,6 +75,7 @@ ILayer::ILayer(size_t kernelLen, size_t inLen, size_t inDepth, size_t outLen, si
 		mBias[i] = gaussianRandom(0.f, 0.00001f);
 	}
 
+	// Initialize activation function ptr
 	switch (eActFn)
 	{
 	case EActFn::TANH:
@@ -84,6 +90,9 @@ ILayer::ILayer(size_t kernelLen, size_t inLen, size_t inDepth, size_t outLen, si
 	case EActFn::SIGMOID:
 		mActivate = [](data_t val) { return 1.f / (1.f + pow(2.7f, -val)); };
 		break;
+	case EActFn::IDEN:
+		mActivate = [](data_t val) { return val; };
+		break;
 	default:
 		Assert(false);
 		break;
@@ -92,39 +101,57 @@ ILayer::ILayer(size_t kernelLen, size_t inLen, size_t inDepth, size_t outLen, si
 
 ILayer::~ILayer()
 {
-	Free(mIn);
+	for (size_t i = 0; i < NUM_THREAD; ++i)
+	{
+		Free(mIn[i]);
+		Free(mWgtDiff[i]);
+		Free(mBiasDiff[i]);
+		Free(mDelta[i]);
+		Free(mDeltaOut[i]);
+	}
 	Free(mWgt);
 	Free(mBias);
-	Free(mWgtDiff);
-	Free(mBiasDiff);
-	Free(mDelta);
-	Free(mDeltaOut);
 }
 
-void ILayer::InitEpoch()
-{
-
-}
 
 void ILayer::InitBatch()
 {
-	memset(mWgtDiff, 0, sizeof(data_t) * WGT_SIZE);
-	memset(mBiasDiff, 0, sizeof(data_t) * BIAS_SIZE);
+	for (size_t i = 0; i < NUM_THREAD; ++i)
+	{
+		memset(mWgtDiff[i], 0, sizeof(data_t) * WGT_SIZE);
+		memset(mBiasDiff[i], 0, sizeof(data_t) * BIAS_SIZE);
+	}
 }
 
 void ILayer::Update(const size_t batchSize, const data_t learningRate)
 {
-	data_t alpha = 0.001f * sqrt((data_t)batchSize) * learningRate;
+	data_t* wgtDiffBuf = mWgtDiff[0];
+	data_t* biasDiffBuf = mBiasDiff[0];
+	// Sum diffs
+	for (size_t i = 1; i < NUM_THREAD; ++i)
+	{
+		int a = 3;
+		for (size_t j = 0; j < WGT_SIZE; ++j)
+		{
+			wgtDiffBuf[j] += mWgtDiff[i][j];
+		}
+	}
+	for (size_t i = 1; i < NUM_THREAD; ++i)
+	{
+		for (size_t j = 0; j < BIAS_SIZE; ++j)
+			biasDiffBuf[j] += mBiasDiff[i][j];
+	}
+	// Update parameters
 	for (size_t i = 0; i < WGT_SIZE; ++i)
 	{
-		data_t dw = mWgtDiff[i] / batchSize;
-		mWgt[i] -= dw;
+		data_t dw = wgtDiffBuf[i] / batchSize;
+		mWgt[i] -= learningRate * dw;
 	}
 
 	for (size_t i = 0; i < BIAS_SIZE; ++i)
 	{
-		data_t dw = mBiasDiff[i] / batchSize;
-		mBias[i] -= dw;
+		data_t dw = biasDiffBuf[i] / batchSize;
+		mBias[i] -= learningRate * dw;
 	}
 }
 

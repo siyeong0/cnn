@@ -11,27 +11,38 @@ FullConnectLayer::~FullConnectLayer()
 
 }
 
-void FullConnectLayer::Forward()
+void FullConnectLayer::Forward(size_t threadIdx)
 {
-	Assert(mOutPad == 0);
+	data_t* inBuf = mIn[threadIdx];
+	data_t* outBuf = mOut[threadIdx];
+	data_t* wgtBuf = mWgt;
+
 	for (size_t y = 0; y < OUTPUT_SIZE; ++y)
 	{
 		data_t sum = 0.f;
 		for (size_t x = 0; x < INPUT_SIZE; ++x)
 		{
-			sum += mWgt[getIdx(x, y)] * mIn[x];
+			sum += wgtBuf[getWgtIdx(0,0,x, y)] * inBuf[x];
 		}
 		sum += mBias[y];
-		mOut[y] = mActivate(sum);
+		outBuf[y] = mActivate(sum);
 	}
 }
-void FullConnectLayer::BackProp()
+void FullConnectLayer::BackProp(size_t threadIdx)
 {
-	Assert(mOutPad == 0);
+	data_t* inBuf = mIn[threadIdx];
+	data_t* outBuf = mOut[threadIdx];
+	data_t* wgtBuf = mWgt;
+	data_t* delInBuf = mDeltaIn[threadIdx];
+	data_t* delBuf = mDelta[threadIdx];
+	data_t* delOutBuf = mDeltaOut[threadIdx];
+	data_t* wgtDiffBuf = mWgtDiff[threadIdx];
+	data_t* biasDiffBuf = mBiasDiff[threadIdx];
+
 	for (size_t y = 0; y < OUTPUT_SIZE; ++y)
 	{
-		data_t deltaIn = mDeltaIn[y];
-		data_t valOut = mOut[y];
+		data_t deltaIn = delInBuf[y];
+		data_t valOut = outBuf[y];
 		data_t deriv = 0.f;
 		switch (meActFn)
 		{
@@ -50,30 +61,24 @@ void FullConnectLayer::BackProp()
 		default:
 			break;
 		}
-		mDelta[y] = deltaIn * deriv;
+		delBuf[y] = deltaIn * deriv;
 	}
 
-	memset(mDeltaOut, 0, sizeof(data_t) * INPUT_SIZE);
+	memset(delOutBuf, 0, sizeof(data_t) * INPUT_SIZE);
 	for (size_t y = 0; y < OUTPUT_SIZE; ++y)
 	{
-		data_t delta = mDelta[y];
+		data_t delta = delBuf[y];
 		for (size_t x = 0; x < INPUT_SIZE; ++x)
 		{
-			data_t in = mIn[x];
-			data_t wgt = mWgt[getIdx(x, y)];
-			mDeltaOut[x] += wgt * delta;
-			mWgtDiff[getIdx(x, y)] += in * delta;
+			data_t in = inBuf[x];
+			data_t wgt = mWgt[getWgtIdx(0,0,x,y)];
+			delOutBuf[x] += wgt * delta;
+			wgtDiffBuf[getWgtIdx(0, 0, x, y)] += in * delta;
 		}
 	}
 
 	for (size_t y = 0; y < OUTPUT_SIZE; ++y)
 	{
-		mBiasDiff[y] += mDelta[y];
+		biasDiffBuf[y] += delBuf[y];
 	}
-}
-
-size_t FullConnectLayer::getIdx(size_t x, size_t y) const
-{
-	Assert(((y * INPUT_SIZE) + x) < (INPUT_SIZE * OUTPUT_SIZE));
-	return (y * INPUT_SIZE) + x;
 }

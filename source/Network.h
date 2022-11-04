@@ -23,13 +23,13 @@ public:
 	void SetEpochSize(size_t e);
 	void SetLearningRate(data_t l);
 private:
-	inline int getPredict();
+	int getPredict(size_t threadIdx);
 	size_t getIdx(size_t x, size_t y, size_t d) const;
 private:
 	std::vector<ILayer*> mLayers;
-	data_t* mInput;
-	data_t* mOutput;
-	data_t* mDeltaIn;
+	std::vector<data_t*> mInput;
+	std::vector<data_t*> mOutput;
+	std::vector<data_t*> mDeltaIn;
 
 	data_t* mData;
 	char* mLabels;
@@ -43,7 +43,5 @@ private:
 	size_t mInputSize;
 	size_t mInputDepth;
 	size_t mOutputSize;
-
-	std::vector<size_t> mShuffleIdxs;
 	size_t mNumPad;
 };

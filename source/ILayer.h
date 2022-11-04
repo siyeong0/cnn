@@ -1,6 +1,7 @@
 #pragma once
-#include <cstdlib>
 #include <functional>
+#include <vector>
+#include <thread>
 
 #ifdef _DEBUG
 #define Assert(E) if(!(E)){ __asm{ int 3 } }
@@ -22,12 +23,15 @@ inline void Free(void* ptr)
 
 using data_t = float;
 
+const unsigned int NUM_THREAD = std::thread::hardware_concurrency();
+
 enum class EActFn
 {
 	TANH,
 	RELU,
 	SOFTMAX,
 	SIGMOID,
+	IDEN,
 };
 
 enum class ENet { END = 0 };
@@ -39,15 +43,14 @@ class ILayer
 public:
 	friend Network& operator>>(Network& net, ENet e);
 public:
-	ILayer(size_t kernelLen, size_t inLen, size_t inDepth, size_t outLen,size_t outDepth, EActFn eActFn);
+	ILayer(size_t kernelLen, size_t inLen, size_t inDepth, size_t outLen, size_t outDepth, EActFn eActFn);
 	~ILayer();
 	ILayer(const ILayer&) = delete;
 	ILayer& operator=(const ILayer&) = delete;
 
-	virtual void Forward() = 0;
-	virtual void BackProp() = 0;
+	virtual void Forward(size_t threadIdx) = 0;
+	virtual void BackProp(size_t threadIdx) = 0;
 
-	void InitEpoch();
 	void InitBatch();
 
 	void Update(const size_t batchSize, const data_t learningRate);
@@ -60,16 +63,16 @@ protected:
 	size_t getDInIdx(size_t x, size_t y, size_t d) const;
 	size_t getDOutIdx(size_t x, size_t y, size_t d) const;
 protected:
-	data_t* mIn;
-	data_t* mOut;
+	std::vector<data_t*> mIn;
+	std::vector<data_t*> mOut;
 	data_t* mWgt;
 	data_t* mBias;
 
-	data_t* mWgtDiff;
-	data_t* mBiasDiff;
-	data_t* mDelta;
-	data_t* mDeltaIn;
-	data_t* mDeltaOut;
+	std::vector<data_t*> mWgtDiff;
+	std::vector<data_t*> mBiasDiff;
+	std::vector<data_t*> mDelta;
+	std::vector<data_t*> mDeltaIn;
+	std::vector<data_t*> mDeltaOut;
 
 	EActFn meActFn;
 	std::function<data_t(data_t)> mActivate;
