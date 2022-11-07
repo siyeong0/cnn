@@ -165,7 +165,7 @@ size_t ILayer::getInIdx(size_t x, size_t y, size_t d) const
 size_t ILayer::getOutIdx(size_t x, size_t y, size_t d) const
 {
 	//size_t idx = ((OUTPUT_LEN + 2 * mOutPad) * (y + mOutPad) + (mOutPad + x)) * OUTPUT_DEPTH + d;
-	size_t idx = (OUTPUT_LEN + 2 * mOutPad) * (OUTPUT_LEN + 2 * mOutPad) * d + (OUTPUT_LEN + 2 * mOutPad) * y + x;
+	size_t idx = (OUTPUT_LEN + 2 * mOutPad) * (OUTPUT_LEN + 2 * mOutPad) * d + (OUTPUT_LEN + 2 * mOutPad) * (mOutPad + y) + (mOutPad + x);
 	Assert(idx < (OUTPUT_LEN + 2 * mOutPad)* (OUTPUT_LEN + 2 * mOutPad)* OUTPUT_DEPTH);
 	return idx;
 }
