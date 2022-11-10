@@ -58,7 +58,11 @@ void FullConnectLayer::BackProp(size_t threadIdx)
 		case EActFn::SIGMOID:
 			deriv = valOut * (1 - valOut);
 			break;
+		case EActFn::IDEN:
+			deriv = 1.f;
+			break;
 		default:
+			Assert(false);
 			break;
 		}
 		delBuf[y] = deltaIn * deriv;

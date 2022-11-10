@@ -22,8 +22,7 @@ int main(void)
 	ReadMNISTLabelData("resource/t10k-labels.idx1-ubyte", testLabels);
 
 	Network net;
-
-	ConvLayer conv32x32x1(5, 32, 1, 28, 6, EActFn::RELU);
+	ConvLayer conv32x32x1(5, 28, 1, 28, 6, EActFn::RELU);
 	PoolLayer pool28x28x6(2, 28, 6, EActFn::RELU);
 	ConvLayer conv14x14x6(5, 14, 6, 10, 16, EActFn::RELU);
 	PoolLayer pool10x10x16(2, 10, 16, EActFn::RELU);
@@ -32,11 +31,11 @@ int main(void)
 	net >> conv32x32x1 >> pool28x28x6 >> conv14x14x6 >> pool10x10x16 >> conv5x5x16 >> full120To10 >> ENet::END;
 
 	net.SetBatchSize(16);
-	net.SetEpochSize(10000);
-	net.SetLearningRate(0.5f);
-	net.SetData(trainDatas, 28, trainLabels, 60000);
+	net.SetEpochSize(10);
+	net.SetLearningRate(0.01f);
+	net.SetData(trainDatas, trainLabels, 50000);
 	net.Fit();
-	std::cout << std::endl << net.GetAccuracy(trainDatas, trainLabels, 10000);
+	std::cout << std::endl << "TEST ACCURACY : " << net.GetAccuracy(testDatas, testLabels, 10000);
 
 	delete[] trainDatas;
 	delete[] trainLabels;

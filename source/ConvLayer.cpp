@@ -57,6 +57,7 @@ void ConvLayer::BackProp(size_t threadIdx)
 	data_t* wgtDiffBuf = mWgtDiff[threadIdx];
 	data_t* biasDiffBuf = mBiasDiff[threadIdx];
 
+	// Get global delta
 	for (size_t outD = 0; outD < OUTPUT_DEPTH; ++outD)
 	{
 		for (size_t outY = 0; outY < OUTPUT_LEN; ++outY)
@@ -82,7 +83,7 @@ void ConvLayer::BackProp(size_t threadIdx)
 			}
 		}
 	}
-
+	// Get Weights' gradient
 	for (size_t kY = 0; kY < KERNEL_LEN; ++kY)
 	{
 		for (size_t kX = 0; kX < KERNEL_LEN; ++kX)
@@ -107,7 +108,21 @@ void ConvLayer::BackProp(size_t threadIdx)
 			}
 		}
 	}
+	// Get Biases' gradient
+	for (size_t outD = 0; outD < OUTPUT_DEPTH; ++outD)
+	{
+		data_t sum = 0.f;
+		for (size_t outY = 0; outY < OUTPUT_LEN; ++outY)
+		{
+			for (size_t outX = 0; outX < OUTPUT_LEN; ++outX)
+			{
+				sum += delBuf[getDeltaIdx(outX, outY, outD)];
+			}
+		}
+		biasDiffBuf[outD] += sum;
+	}
 
+	// Get out gradient : prev layer's input gradient
 	memset(delOutBuf, 0, sizeof(data_t) * DELTA_OUT_SIZE);
 	for (size_t outD = 0; outD < OUTPUT_DEPTH; ++outD)
 	{
@@ -135,18 +150,5 @@ void ConvLayer::BackProp(size_t threadIdx)
 				}
 			}
 		}
-	}
-
-	for (size_t outD = 0; outD < OUTPUT_DEPTH; ++outD)
-	{
-		data_t sum = 0.f;
-		for (size_t outY = 0; outY < OUTPUT_LEN; ++outY)
-		{
-			for (size_t outX = 0; outX < OUTPUT_LEN; ++outX)
-			{
-				sum += delBuf[getDeltaIdx(outX, outY, outD)];
-			}
-		}
-		biasDiffBuf[outD] += sum;
 	}
 }

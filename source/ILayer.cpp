@@ -1,30 +1,15 @@
 #include "ILayer.h"
 #include <iostream>
 
-static data_t gaussianRandom(data_t average, data_t stdev)
-{
-	data_t v1 = 0.f;
-	data_t v2 = 0.f;
-	data_t s = 0.f;
-	do
-	{
-		v1 = 2 * ((data_t)rand() / RAND_MAX) - 1;
-		v2 = 2 * ((data_t)rand() / RAND_MAX) - 1;
-		s = v1 * v1 + v2 * v2;
-	} while (s >= 1 || s == 0);
-
-	s = sqrt((-2 * log(s)) / s);
-	data_t temp = v1 * s;
-	temp = (stdev * temp) + average;
-
-	return temp;
-}
-
 ILayer::ILayer(size_t kernelLen, size_t inLen, size_t inDepth, size_t outLen, size_t outDepth, EActFn eActFn)
 	: mIn()
 	, mOut()
 	, mWgt(nullptr)
 	, mBias(nullptr)
+	, mWgtGradSum(nullptr)
+	, mBiasGradSum(nullptr)
+	, mWgtVeloVec(nullptr)
+	, mBiasVeloVec(nullptr)
 	, mWgtDiff()
 	, mBiasDiff()
 	, mDelta()
@@ -48,7 +33,10 @@ ILayer::ILayer(size_t kernelLen, size_t inLen, size_t inDepth, size_t outLen, si
 	, BIAS_SIZE(OUTPUT_DEPTH)
 	, mActivate(nullptr)
 	, mOutPad(0)
+	, mB1T(0.9f)
+	, mB2T(0.99f)
 {
+	// Alloc buffers
 	for (size_t i = 0; i < NUM_THREAD; ++i)
 	{
 		mIn.push_back(Alloc<data_t>(INPUT_SIZE));
@@ -56,26 +44,41 @@ ILayer::ILayer(size_t kernelLen, size_t inLen, size_t inDepth, size_t outLen, si
 		mBiasDiff.push_back(Alloc<data_t>(BIAS_SIZE));
 		mDelta.push_back(Alloc<data_t>(DELTA_SIZE));
 		mDeltaOut.push_back(Alloc<data_t>(DELTA_OUT_SIZE));
+		// Initialize to 0 , assert bit pattern 0x0000 means 0.0
 		memset(mIn[i], 0, sizeof(data_t) * INPUT_SIZE);
 		memset(mDelta[i], 0, sizeof(data_t) * DELTA_SIZE);
 		memset(mDeltaOut[i], 0, sizeof(data_t) * DELTA_OUT_SIZE);
 	}
-
-	// Initialize parameters
 	mWgt = Alloc<data_t>(WGT_SIZE);
 	mBias = Alloc<data_t>(BIAS_SIZE);
+	mWgtGradSum = Alloc<data_t>(WGT_SIZE);
+	mBiasGradSum = Alloc<data_t>(BIAS_SIZE);
+	mWgtVeloVec = Alloc<data_t>(WGT_SIZE);
+	mBiasVeloVec = Alloc<data_t>(BIAS_SIZE);
+	memset(mWgtGradSum, 0, sizeof(data_t) * WGT_SIZE);
+	memset(mBiasGradSum, 0, sizeof(data_t) * BIAS_SIZE);
+	memset(mWgtVeloVec, 0, sizeof(data_t) * WGT_SIZE);
+	memset(mBiasVeloVec, 0, sizeof(data_t) * BIAS_SIZE);
 
+	// Initialize Weigths
+	// Glorot2010
+	//		   sqrt(6)
+	//	m = -------------		-m < Init val < m	
+	//		sqrt(ni + no)
+	const size_t FAN = KERNEL_SIZE * (INPUT_DEPTH + OUTPUT_DEPTH);
+	const data_t INIT_MAX = sqrt(6.f / FAN);
 	srand(time(NULL));
+	const int RAND_HALF = (RAND_MAX + 1) / 2;
 	for (size_t i = 0; i < WGT_SIZE; ++i)
 	{
-		mWgt[i] = gaussianRandom(0.f, 0.1f);
+		int num = rand();
+		data_t val = (data_t)(num - RAND_HALF) / RAND_HALF * INIT_MAX;
+		mWgt[i] = val;
 	}
-	for (size_t i = 0; i < BIAS_SIZE; ++i)
-	{
-		mBias[i] = gaussianRandom(0.f, 0.00001f);
-	}
+	// Initialize Bias to 0
+	memset(mBias, 0, sizeof(data_t) * BIAS_SIZE);
 
-	// Initialize activation function ptr
+	// Initialize activation function
 	switch (eActFn)
 	{
 	case EActFn::TANH:
@@ -111,6 +114,10 @@ ILayer::~ILayer()
 	}
 	Free(mWgt);
 	Free(mBias);
+	Free(mWgtGradSum);
+	Free(mBiasGradSum);
+	Free(mWgtVeloVec);
+	Free(mBiasVeloVec);
 }
 
 
@@ -130,7 +137,6 @@ void ILayer::Update(const size_t batchSize, const data_t learningRate)
 	// Sum diffs
 	for (size_t i = 1; i < NUM_THREAD; ++i)
 	{
-		int a = 3;
 		for (size_t j = 0; j < WGT_SIZE; ++j)
 		{
 			wgtDiffBuf[j] += mWgtDiff[i][j];
@@ -142,16 +148,40 @@ void ILayer::Update(const size_t batchSize, const data_t learningRate)
 			biasDiffBuf[j] += mBiasDiff[i][j];
 	}
 	// Update parameters
+	// Adaptive Moment
+	const data_t EPS = 0.000001f;
+	const data_t INV = 1.f / batchSize;
+	const data_t B1 = 0.9f;
+	const data_t B2 = 0.999f;
+	mB1T = mB1T * B1;
+	mB2T = mB2T * B2;
+
+	data_t* mt = nullptr;
+	data_t* vt = nullptr;
+	data_t alpha = (0.001f * sqrt(batchSize) * learningRate);
+
+	mt = mWgtGradSum;
+	vt = mWgtVeloVec;
 	for (size_t i = 0; i < WGT_SIZE; ++i)
 	{
-		data_t dw = wgtDiffBuf[i] / batchSize;
-		mWgt[i] -= learningRate * dw;
+		data_t dw = wgtDiffBuf[i];
+		dw = dw * INV;
+		mt[i] = mt[i] * B1 + (1 - B1) * dw;
+		vt[i] = vt[i] * B2 + (1 - B2) * dw * dw;
+		data_t sw = (alpha * (mt[i] / (1 - mB1T)) / sqrt(vt[i] / (1 - mB2T) + EPS));
+		mWgt[i] -= sw;
 	}
 
+	mt = mBiasGradSum;
+	vt = mBiasVeloVec;
 	for (size_t i = 0; i < BIAS_SIZE; ++i)
 	{
-		data_t dw = biasDiffBuf[i] / batchSize;
-		mBias[i] -= learningRate * dw;
+		data_t dw = biasDiffBuf[i];
+		dw = dw * INV;
+		mt[i] = mt[i] * B1 + (1 - B1) * dw;
+		vt[i] = vt[i] * B2 + (1 - B2) * dw * dw;
+		data_t sw = (alpha * (mt[i] / (1 - mB1T)) / sqrt(vt[i] / (1 - mB2T) + EPS));
+		mBias[i] -= sw;
 	}
 }
 

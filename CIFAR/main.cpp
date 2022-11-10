@@ -14,10 +14,10 @@ int main()
 	data_t* trainDatas = new float[32 * 32 * 3 * 50000];
 	char* trainLabels = new char[50000];
 	ReadCIFARData("resource/data_batch_1.bin", trainDatas + 32 * 32 * 3 * 0, trainLabels + 0);
-	//ReadCIFARData("resource/data_batch_2.bin", trainDatas + 32 * 32 * 3 * 10000, trainLabels + 10000);
-	//ReadCIFARData("resource/data_batch_3.bin", trainDatas + 32 * 32 * 3 * 20000, trainLabels + 20000);
-	//ReadCIFARData("resource/data_batch_4.bin", trainDatas + 32 * 32 * 3 * 30000, trainLabels + 30000);
-	//ReadCIFARData("resource/data_batch_5.bin", trainDatas + 32 * 32 * 3 * 40000, trainLabels + 40000);
+	ReadCIFARData("resource/data_batch_2.bin", trainDatas + 32 * 32 * 3 * 10000, trainLabels + 10000);
+	ReadCIFARData("resource/data_batch_3.bin", trainDatas + 32 * 32 * 3 * 20000, trainLabels + 20000);
+	ReadCIFARData("resource/data_batch_4.bin", trainDatas + 32 * 32 * 3 * 30000, trainLabels + 30000);
+	ReadCIFARData("resource/data_batch_5.bin", trainDatas + 32 * 32 * 3 * 40000, trainLabels + 40000);
 	data_t* testDatas = new float[32 * 32 * 3 * 10000];
 	char* testLabels = new char[10000];
 	ReadCIFARData("resource/test_batch.bin", testDatas, testLabels);
@@ -37,31 +37,18 @@ int main()
 		>> conv8x8x32 >> pool8x8x64
 		>> full120To64 >> full64To10 >> ENet::END;
 
-	net.SetBatchSize(16);
-	net.SetEpochSize(300);
-	net.SetLearningRate(0.5f);
-	net.SetData(trainDatas, 32, trainLabels, 16);
+	net.SetBatchSize(32);
+	net.SetEpochSize(10);
+	net.SetLearningRate(0.01f);
+	net.SetData(trainDatas, trainLabels, 10000);
 	net.Fit();
-	std::cout << std::endl << net.GetAccuracy(trainDatas, trainLabels, 16);
+	std::cout << std::endl << net.GetAccuracy(trainDatas, trainLabels, 10000);
 
 	delete[] trainDatas;
 	delete[] trainLabels;
-	//delete[] testDatas;
-	//delete[] testLabels;
+	delete[] testDatas;
+	delete[] testLabels;
 	return 0;
-}
-
-inline uint32_t ReverseInt32(uint32_t val)
-{
-	uint32_t b1, b2, b3, b4;
-	b1 = val & 0x0ff;
-	b2 = (val >> 8) & 0x0ff;
-	b3 = (val >> 16) & 0x0ff;
-	b4 = (val >> 24) & 0x0ff;
-
-	val = (b1 << 24) + (b2 << 16) + (b3 << 8) + b4;
-
-	return val;
 }
 
 bool ReadCIFARData(const char* filePath, data_t* datas, char* labels)
@@ -74,6 +61,7 @@ bool ReadCIFARData(const char* filePath, data_t* datas, char* labels)
 
 	size_t totalSize = (32 * 32 * 3 + 1) * 10000;
 	unsigned char* buffer = static_cast<unsigned char*>(malloc(totalSize));
+	Assert(buffer != nullptr);
 	file.read(reinterpret_cast<char*>(buffer), totalSize);
 
 	for (size_t n = 0; n < 10000; n++)

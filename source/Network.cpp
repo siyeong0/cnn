@@ -20,11 +20,11 @@ Network& operator>>(Network& net, ENet e)
 	ILayer& head = *(net.mLayers[0]);
 	ILayer& tail = *(net.mLayers[size - 1]);
 	// Set constants
-	net.mInputLen = head.INPUT_PAD_LEN;
+	net.mInputLen = head.INPUT_LEN;
 	net.mInputDepth = head.INPUT_DEPTH;
-	net.mInputSize = net.mInputLen * net.mInputLen;
 	net.mOutputSize = tail.OUTPUT_SIZE;
 	net.mNumPad = head.NUM_PAD;
+	net.mInputSize = net.mInputLen * net.mInputLen * net.mInputDepth;
 	// Connect network's buffers and head,tail layers' buffers
 	for (size_t i = 0; i < NUM_THREAD; ++i)
 	{
@@ -56,10 +56,10 @@ Network::Network()
 	, mDeltaIn()
 	, mData(nullptr)
 	, mLabels(nullptr)
-	, mNumBlocks(0)
-	, mBatch(0)
-	, mEpoch(0)
-	, mLearningRate(0.f)
+	, mNumImages(0)
+	, mBatchSize(0)
+	, mEpochSize(0)
+	, mLearningRate(0.01f)
 	, mInputLen(0)
 	, mInputSize(0)
 	, mInputDepth(0)
@@ -81,42 +81,52 @@ void Network::Fit()
 {
 	std::vector<std::thread> threads;
 	size_t numLayers = mLayers.size();
-	size_t imgIdx = 0;
-
-	for (size_t e = 0; e < mEpoch; ++e)
+	for (size_t i = 0; i < mInput.size(); ++i)
 	{
-		// Print progress
-		if (e % 10 == 0)
+		memset(mInput[i], 0, sizeof(data_t) * (mInputLen + 2 * mNumPad) * (mInputLen + 2 * mNumPad) * mInputDepth);
+	}
+
+	data_t lr = mLearningRate;
+	for (size_t e = 0; e < mEpochSize; ++e)
+	{
+		data_t* currInput = mData;
+		char* currLabel = mLabels;
+		// Print
+		std::cout << "EPOCH : " << e + 1 << "\n";
+		std::cout << "|";
+		// Initialize constants
+		const size_t BATCH = mBatchSize - mBatchSize % NUM_THREAD;
+		const size_t BATCH_PER_EPOCH = mNumImages / BATCH;
+		const size_t BATCH_DIV_THREAD = BATCH / NUM_THREAD;
+		for (size_t be = 0; be < BATCH_PER_EPOCH; ++be)
 		{
-			system("cls");
-			std::cout << ((double)(e) / mEpoch) * 100 << " %\n"<< GetAccuracy(mData, mLabels, 16);
-		}
-		// Initialize batch : set weight diff/bias diff to 0
-		for (size_t i = 0; i < numLayers; ++i)
-		{
-			mLayers[i]->InitBatch();
-		}
-		// Get parameters' gradients
-		size_t batch = mBatch - mBatch % NUM_THREAD;
-		for (size_t b = 0; b < batch / NUM_THREAD; ++b)
-		{
-			for (size_t idx = 0; idx < NUM_THREAD; ++idx)
+			// Print progress
+			if ((be + 1) % (BATCH_PER_EPOCH / 10) == 0)
 			{
-				auto func = [this, &numLayers](size_t threadIdx, data_t* input, int label)
+				std::cout << "--|";
+			}
+			// Initialize batch : set weight diff/bias diff to 0
+			for (size_t i = 0; i < numLayers; ++i)
+			{
+				mLayers[i]->InitBatch();
+			}
+			// Get parameters' gradients
+			// Calculate parmeters' diffs
+			auto func = [this, &numLayers](size_t threadIdx, data_t* input, int label, size_t bdt)
+			{
+				data_t* inputBuf = mInput[threadIdx];
+				data_t* outputBuf = mOutput[threadIdx];
+				data_t* delInBuf = mDeltaIn[threadIdx];
+				for (size_t n = 0; n < bdt; ++n)
 				{
-					data_t* inputBuf = mInput[threadIdx];
-					data_t* outputBuf = mOutput[threadIdx];
-					data_t* delInBuf = mDeltaIn[threadIdx];
 					// Copy input
-					data_t* data = input;
-					memset(inputBuf, 0, sizeof(data_t) * (mInputLen + 2 * mNumPad) * (mInputLen + 2 * mNumPad) * mInputDepth);
 					for (size_t y = 0; y < mInputLen; ++y)
 					{
 						for (size_t x = 0; x < mInputLen; ++x)
 						{
 							for (size_t d = 0; d < mInputDepth; ++d)
 							{
-								inputBuf[getIdx(x, y, d)] = data[mInputLen * mInputLen * d + y * mInputLen + x];
+								inputBuf[getIdx(x, y, d)] = input[mInputLen * mInputLen * d + y * mInputLen + x];
 							}
 						}
 					}
@@ -138,24 +148,34 @@ void Network::Fit()
 						size_t idx = numLayers - i - 1;
 						mLayers[idx]->BackProp(threadIdx);
 					}
-				};
-				data_t* input = mData + mInputSize * imgIdx;
-				int label = static_cast<int>(mLabels[imgIdx]);
-				threads.push_back(std::thread(func, idx, input, label));
-				imgIdx++;
-				imgIdx %= mNumBlocks;
+					// Next input
+					input += mInputSize;
+				}
+			};
+			for (size_t idx = 0; idx < NUM_THREAD; ++idx)
+			{
+				threads.push_back(std::thread(func, idx, currInput, static_cast<int>(*currLabel), BATCH_DIV_THREAD));
+				currInput += mInputSize;
+				currLabel += 1;
 			}
 			for (size_t i = 0; i < NUM_THREAD; ++i)
 			{
 				threads[i].join();
 			}
 			threads.clear();
+			// Fit parameters
+			for (size_t i = 0; i < numLayers; i++)
+			{
+				mLayers[i]->Update(BATCH, lr);
+			}
 		}
-		// Fit parameters
-		for (size_t i = 0; i < numLayers; i++)
-		{
-			mLayers[i]->Update(mBatch, mLearningRate);
-		}
+		// Print current accuracy
+		constexpr size_t NUM_FOLD = 100;
+		static size_t valIdx = 0;
+		std::cout << "\nACCURACY : " 
+			<< GetAccuracy(mData + mInputSize * valIdx, mLabels + valIdx, mNumImages / NUM_FOLD) << std::endl << std::endl;
+		valIdx++;
+		valIdx %= NUM_FOLD;
 	}
 }
 
@@ -165,42 +185,41 @@ data_t Network::GetAccuracy(data_t* data, char* labels, size_t n)
 	std::vector<size_t> correctCount(NUM_THREAD);
 	size_t imgIdx = 0;
 	size_t numLayers = mLayers.size();
-	auto func = [this, &numLayers, &correctCount](size_t threadIdx, data_t* input, int label)
-	{
-		data_t* inputBuf = mInput[threadIdx];
-		data_t* outputBuf = mOutput[threadIdx];
-		data_t* delInBuf = mDeltaIn[threadIdx];
-		// Copy input
-		data_t* data = input;
-		memset(inputBuf, 0, sizeof(data_t) * (mInputLen + 2 * mNumPad) * (mInputLen + 2 * mNumPad) * mInputDepth);
-		for (size_t y = 0; y < mInputLen; ++y)
-		{
-			for (size_t x = 0; x < mInputLen; ++x)
-			{
-				for (size_t d = 0; d < mInputDepth; ++d)
-				{
-					inputBuf[getIdx(x, y, d)] = data[mInputLen * mInputLen * d + y * mInputLen + x];
-				}
-			}
-		}
-		// Forward propagation
-		for (size_t i = 0; i < numLayers; ++i)
-		{
-			mLayers[i]->Forward(threadIdx);
-		}
-		//std::cout << label << "," << getPredict(threadIdx) << std::endl;
-		if (label == getPredict(threadIdx))
-		{
-			correctCount[threadIdx]++;
-		}
-	};
 	n -= n % NUM_THREAD;
 	while (imgIdx < n)
 	{
+		// Get outputs
+		auto func = [this, &numLayers, &correctCount](size_t threadIdx, data_t* input, int label)
+		{
+			data_t* inputBuf = mInput[threadIdx];
+			data_t* outputBuf = mOutput[threadIdx];
+			data_t* delInBuf = mDeltaIn[threadIdx];
+			// Copy input
+			for (size_t y = 0; y < mInputLen; ++y)
+			{
+				for (size_t x = 0; x < mInputLen; ++x)
+				{
+					for (size_t d = 0; d < mInputDepth; ++d)
+					{
+						inputBuf[getIdx(x, y, d)] = input[mInputLen * mInputLen * d + y * mInputLen + x];
+					}
+				}
+			}
+			// Forward propagation
+			for (size_t i = 0; i < numLayers; ++i)
+			{
+				mLayers[i]->Forward(threadIdx);
+			}
+			//std::cout << label << "," << getPredict(threadIdx) << std::endl;
+			if (label == getPredict(threadIdx))
+			{
+				correctCount[threadIdx]++;
+			}
+		};
 		for (size_t idx = 0; idx < NUM_THREAD; ++idx)
 		{
 			data_t* input = data + mInputSize * imgIdx;
-			int label = static_cast<int>(mLabels[imgIdx]);
+			int label = static_cast<int>(labels[imgIdx]);
 			threads.push_back(std::thread(func, idx, input, label));
 			imgIdx++;
 		}
@@ -210,6 +229,7 @@ data_t Network::GetAccuracy(data_t* data, char* labels, size_t n)
 		}
 		threads.clear();
 	}
+	// Sum num true positive
 	size_t sum = 0;
 	for (size_t i = 0; i < NUM_THREAD; ++i)
 	{
@@ -219,24 +239,21 @@ data_t Network::GetAccuracy(data_t* data, char* labels, size_t n)
 	return static_cast<data_t>(sum) / n;
 }
 
-void Network::SetData(data_t* td, size_t len, char* ld, size_t n)
+void Network::SetData(data_t* td, char* ld, size_t n)
 {
 	mData = td;
 	mLabels = ld;
-	mNumBlocks = n;
-	mNumPad = (mInputLen - len) / 2;
-	mInputLen -= 2 * mNumPad;
-	mInputSize = mInputLen * mInputLen;
+	mNumImages = n;
 }
 
 void Network::SetBatchSize(size_t b)
 {
-	mBatch = b;
+	mBatchSize = b;
 }
 
 void Network::SetEpochSize(size_t e)
 {
-	mEpoch = e;
+	mEpochSize = e;
 }
 
 void Network::SetLearningRate(data_t l)
@@ -250,7 +267,7 @@ int Network::getPredict(size_t threadIdx)
 
 	int idx = 0;
 	data_t max = 0.f;
-	for (size_t i = 0; i < mOutputSize; i++)
+	for (size_t i = 1; i < mOutputSize; i++)
 	{
 		data_t out = outBuf[i];
 		if (max < out)

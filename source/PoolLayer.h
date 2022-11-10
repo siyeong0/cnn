@@ -12,5 +12,5 @@ public:
 private:
 	size_t getMIBufIdx(size_t x, size_t y, size_t d) const;
 private:
-	std::vector<size_t*> mMaxIdxBuf;
+	std::vector<size_t*> mMaxIdxBuf;	// Buffer to store max value's idx
 };

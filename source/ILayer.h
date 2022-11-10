@@ -62,21 +62,26 @@ protected:
 	size_t getDeltaIdx(size_t x, size_t y, size_t d) const;
 	size_t getDInIdx(size_t x, size_t y, size_t d) const;
 	size_t getDOutIdx(size_t x, size_t y, size_t d) const;
-protected:
+protected:	// vector elements are buffers allocated to threads
 	std::vector<data_t*> mIn;
 	std::vector<data_t*> mOut;
 	data_t* mWgt;
 	data_t* mBias;
-
+	// Buffers for back propagation
 	std::vector<data_t*> mWgtDiff;
 	std::vector<data_t*> mBiasDiff;
 	std::vector<data_t*> mDelta;
 	std::vector<data_t*> mDeltaIn;
 	std::vector<data_t*> mDeltaOut;
-
+	// Buffers for Adam
+	data_t* mWgtGradSum;
+	data_t* mBiasGradSum;
+	data_t* mWgtVeloVec;
+	data_t* mBiasVeloVec;
+	// Activation func
 	EActFn meActFn;
 	std::function<data_t(data_t)> mActivate;
-protected:
+protected:	// Constants for buffer sizes
 	const size_t NUM_PAD;
 	const size_t INPUT_LEN;
 	const size_t INPUT_PAD_LEN;
@@ -93,4 +98,7 @@ protected:
 	const size_t WGT_SIZE;
 	const size_t BIAS_SIZE;
 	size_t mOutPad;
+private:	// Constatns for Adam
+	data_t mB1T;
+	data_t mB2T;
 };

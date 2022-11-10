@@ -42,7 +42,9 @@ void PoolLayer::Forward(size_t threadIdx)
 				if (v2 > maxVal) { maxVal = v2; maxIdx = 0x2; }
 				if (v3 > maxVal) { maxVal = v3; maxIdx = 0x3; }
 				Assert(maxIdx < 4);
+				// Get output
 				outBuf[getOutIdx(outX, outY, outD)] = mActivate(maxVal);
+				// Store max val's idx
 				maxIdxBuf[getMIBufIdx(outX, outY, outD)] = maxIdx;
 			}
 		}
