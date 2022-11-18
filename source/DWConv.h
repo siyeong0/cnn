@@ -1,9 +1,12 @@
 #pragma once
-#include "ConvLayer.h"
+#include "Conv.h"
 
-class DwConv : public ConvLayer
+namespace cnn
 {
-public:
-	DwConv(size_t kernelLen, size_t inLen, size_t inDepth, size_t outLen, EActFn eActFn);
-	~DwConv();
-};
+	class DwConv : public Conv
+	{
+	public:
+		DwConv(size_t kernelLen, size_t inLen, size_t inDepth, size_t outLen, EActFn eActFn);
+		~DwConv();
+	};
+}

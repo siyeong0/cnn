@@ -3,14 +3,16 @@
 #include <vector>
 
 #include "../source/Network.h"
-#include "../source/ConvLayer.h"
-#include "../source/FullConnectLayer.h"
-#include "../source/PoolLayer.h"
+#include "../source/Conv.h"
+#include "../source/Linear.h"
+#include "../source/Pool.h"
 
 #include "../source/DWConv.h"
 #include "../source/PWConv.h"
 
 bool ReadCIFARData(const char* filePath, data_t* datas, char* labels);
+
+using namespace cnn;
 
 int main()
 {
@@ -26,35 +28,35 @@ int main()
 	ReadCIFARData("resource/test_batch.bin", testDatas, testLabels);
 	Network net;
 
-	DwConv dconv32x32x3(5, 32, 3, 32, EActFn::RELU);
-	PWConv pconv32x32x3(32, 3, 32, 32, EActFn::RELU);
-	PoolLayer pool32x32x32(2, 32, 32, EActFn::RELU);
-	ConvLayer conv16x16x32(5, 16, 32, 16, 32, EActFn::RELU);
-	PoolLayer pool16x16x32(2, 16, 32, EActFn::RELU);
-	ConvLayer conv8x8x32(5, 8, 32, 8, 64, EActFn::RELU);
-	PoolLayer pool8x8x64(2, 8, 64, EActFn::RELU);
-	FullConnectLayer full120To64(1024, 64, EActFn::IDEN);
-	FullConnectLayer full64To10(64, 10, EActFn::SIGMOID);
+	//DwConv dconv32x32x3(5, 32, 3, 32, EActFn::RELU);
+	//PWConv pconv32x32x3(32, 3, 32, 32, EActFn::RELU);
+	//Pool pool32x32x32(2, 32, 32, EActFn::RELU);
+	//Conv conv16x16x32(5, 16, 32, 16, 32, EActFn::RELU);
+	//Pool pool16x16x32(2, 16, 32, EActFn::RELU);
+	//Conv conv8x8x32(5, 8, 32, 8, 64, EActFn::RELU);
+	//Pool pool8x8x64(2, 8, 64, EActFn::RELU);
+	//Linear full120To64(1024, 64, EActFn::IDEN);
+	//Linear full64To10(64, 10, EActFn::SIGMOID);
 
-	net >> dconv32x32x3 >> pconv32x32x3
-		>> pool32x32x32
-		>> conv16x16x32 >> pool16x16x32
-		>> conv8x8x32 >> pool8x8x64
-		>> full120To64 >> full64To10 >> ENet::END;
-
-	//ConvLayer conv32x32x3(5, 32, 3, 32, 32, EActFn::RELU);
-	//PoolLayer pool32x32x32(2, 32, 32, EActFn::RELU);
-	//ConvLayer conv16x16x32(5, 16, 32, 16, 32, EActFn::RELU);
-	//PoolLayer pool16x16x32(2, 16, 32, EActFn::RELU);
-	//ConvLayer conv8x8x32(5, 8, 32, 8, 64, EActFn::RELU);
-	//PoolLayer pool8x8x64(2, 8, 64, EActFn::RELU);
-	//FullConnectLayer full120To64(1024, 64, EActFn::IDEN);
-	//FullConnectLayer full64To10(64, 10, EActFn::SIGMOID);
-
-	//net >> conv32x32x3 >> pool32x32x32
+	//net >> dconv32x32x3 >> pconv32x32x3
+	//	>> pool32x32x32
 	//	>> conv16x16x32 >> pool16x16x32
 	//	>> conv8x8x32 >> pool8x8x64
 	//	>> full120To64 >> full64To10 >> ENet::END;
+
+	Conv conv32x32x3(5, 32, 3, 32, 32, EActFn::RELU);
+	Pool pool32x32x32(2, 32, 32, EActFn::RELU);
+	Conv conv16x16x32(5, 16, 32, 16, 32, EActFn::RELU);
+	Pool pool16x16x32(2, 16, 32, EActFn::RELU);
+	Conv conv8x8x32(5, 8, 32, 8, 64, EActFn::RELU);
+	Pool pool8x8x64(2, 8, 64, EActFn::RELU);
+	Linear full120To64(1024, 64, EActFn::IDEN);
+	Linear full64To10(64, 10, EActFn::SIGMOID);
+
+	net >> conv32x32x3 >> pool32x32x32
+		>> conv16x16x32 >> pool16x16x32
+		>> conv8x8x32 >> pool8x8x64
+		>> full120To64 >> full64To10 >> ENet::END;
 
 	net.SetBatchSize(16);
 	net.SetEpochSize(10);
