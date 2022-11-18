@@ -7,6 +7,9 @@
 #include "../source/FullConnectLayer.h"
 #include "../source/PoolLayer.h"
 
+#include "../source/DWConv.h"
+#include "../source/PWConv.h"
+
 bool ReadCIFARData(const char* filePath, data_t* datas, char* labels);
 
 int main()
@@ -23,7 +26,8 @@ int main()
 	ReadCIFARData("resource/test_batch.bin", testDatas, testLabels);
 	Network net;
 
-	ConvLayer conv32x32x3(5, 32, 3, 32, 32, EActFn::RELU);
+	DwConv dconv32x32x3(5, 32, 3, 32, EActFn::RELU);
+	PWConv pconv32x32x3(32, 3, 32, 32, EActFn::RELU);
 	PoolLayer pool32x32x32(2, 32, 32, EActFn::RELU);
 	ConvLayer conv16x16x32(5, 16, 32, 16, 32, EActFn::RELU);
 	PoolLayer pool16x16x32(2, 16, 32, EActFn::RELU);
@@ -32,17 +36,32 @@ int main()
 	FullConnectLayer full120To64(1024, 64, EActFn::IDEN);
 	FullConnectLayer full64To10(64, 10, EActFn::SIGMOID);
 
-	net >> conv32x32x3 >> pool32x32x32
+	net >> dconv32x32x3 >> pconv32x32x3
+		>> pool32x32x32
 		>> conv16x16x32 >> pool16x16x32
 		>> conv8x8x32 >> pool8x8x64
 		>> full120To64 >> full64To10 >> ENet::END;
 
-	net.SetBatchSize(32);
+	//ConvLayer conv32x32x3(5, 32, 3, 32, 32, EActFn::RELU);
+	//PoolLayer pool32x32x32(2, 32, 32, EActFn::RELU);
+	//ConvLayer conv16x16x32(5, 16, 32, 16, 32, EActFn::RELU);
+	//PoolLayer pool16x16x32(2, 16, 32, EActFn::RELU);
+	//ConvLayer conv8x8x32(5, 8, 32, 8, 64, EActFn::RELU);
+	//PoolLayer pool8x8x64(2, 8, 64, EActFn::RELU);
+	//FullConnectLayer full120To64(1024, 64, EActFn::IDEN);
+	//FullConnectLayer full64To10(64, 10, EActFn::SIGMOID);
+
+	//net >> conv32x32x3 >> pool32x32x32
+	//	>> conv16x16x32 >> pool16x16x32
+	//	>> conv8x8x32 >> pool8x8x64
+	//	>> full120To64 >> full64To10 >> ENet::END;
+
+	net.SetBatchSize(16);
 	net.SetEpochSize(10);
-	net.SetLearningRate(0.01f);
-	net.SetData(trainDatas, trainLabels, 10000);
+	net.SetLearningRate(0.02f);
+	net.SetData(trainDatas, trainLabels, 50000);
 	net.Fit();
-	std::cout << std::endl << net.GetAccuracy(trainDatas, trainLabels, 10000);
+	std::cout << std::endl << net.GetAccuracy(testDatas, testLabels, 10000);
 
 	delete[] trainDatas;
 	delete[] trainLabels;

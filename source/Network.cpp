@@ -170,10 +170,12 @@ void Network::Fit()
 			}
 		}
 		// Print current accuracy
-		constexpr size_t NUM_FOLD = 100;
+		constexpr size_t NUM_FOLD = 10;
 		static size_t valIdx = 0;
+		const size_t NUM_VIMGES = mNumImages / NUM_FOLD;
+		const size_t OFFSET = valIdx * NUM_VIMGES;
 		std::cout << "\nACCURACY : " 
-			<< GetAccuracy(mData + mInputSize * valIdx, mLabels + valIdx, mNumImages / NUM_FOLD) << std::endl << std::endl;
+			<< GetAccuracy(mData + mInputSize * OFFSET, mLabels + OFFSET, NUM_VIMGES) << std::endl << std::endl;
 		valIdx++;
 		valIdx %= NUM_FOLD;
 	}
