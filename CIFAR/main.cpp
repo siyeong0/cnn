@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <ctime>
 
 #include "../source/Network.h"
 #include "../source/Conv.h"
@@ -59,10 +60,20 @@ int main()
 		>> full120To64 >> full64To10 >> ENet::END;
 
 	net.SetBatchSize(16);
-	net.SetEpochSize(10);
-	net.SetLearningRate(0.02f);
+	net.SetEpochSize(1);
+	net.SetLearningRate(0.04f);
 	net.SetData(trainDatas, trainLabels, 50000);
+
+
+	double beg, end;
+
+	beg = clock();
 	net.Fit();
+	end = clock();
+
+	std::cout << std::endl << "TIME TAKEN : " << static_cast<int>(end - beg) / CLOCKS_PER_SEC << " sec" << std::endl;
+
+
 	std::cout << std::endl << net.GetAccuracy(testDatas, testLabels, 10000);
 
 	delete[] trainDatas;

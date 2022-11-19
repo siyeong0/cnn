@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <iterator>
 #include <iostream>
+#include <ppl.h>
 
 namespace cnn
 {
@@ -81,24 +82,25 @@ namespace cnn
 	void Network::Fit()
 	{
 		std::vector<std::thread> threads;
-		size_t numLayers = mLayers.size();
+		const size_t NUM_LAYERS = mLayers.size();
 		for (size_t i = 0; i < mInput.size(); ++i)
 		{
 			memset(mInput[i], 0, sizeof(data_t) * (mInputLen + 2 * mNumPad) * (mInputLen + 2 * mNumPad) * mInputDepth);
 		}
 
-		data_t lr = mLearningRate;
+		const data_t LR = mLearningRate;
 		for (size_t e = 0; e < mEpochSize; ++e)
 		{
-			data_t* currInput = mData;
-			char* currLabel = mLabels;
-			// Print
+			data_t* inputPtr = mData;
+			char* labelPtr = mLabels;
+			// Print progress
 			std::cout << "EPOCH : " << e + 1 << "\n";
 			std::cout << "|";
 			// Initialize constants
 			const size_t BATCH = mBatchSize - mBatchSize % NUM_THREAD;
 			const size_t BATCH_PER_EPOCH = mNumImages / BATCH;
 			const size_t BATCH_DIV_THREAD = BATCH / NUM_THREAD;
+			// Train
 			for (size_t be = 0; be < BATCH_PER_EPOCH; ++be)
 			{
 				// Print progress
@@ -107,68 +109,76 @@ namespace cnn
 					std::cout << "--|";
 				}
 				// Initialize batch : set weight diff/bias diff to 0
-				for (size_t i = 0; i < numLayers; ++i)
+				for (size_t i = 0; i < NUM_LAYERS; ++i)
 				{
 					mLayers[i]->InitBatch();
 				}
 				// Get parameters' gradients
-				// Calculate parmeters' diffs
-				auto func = [this, &numLayers](size_t threadIdx, data_t* input, int label, size_t bdt)
-				{
-					data_t* inputBuf = mInput[threadIdx];
-					data_t* outputBuf = mOutput[threadIdx];
-					data_t* delInBuf = mDeltaIn[threadIdx];
-					for (size_t n = 0; n < bdt; ++n)
+				concurrency::parallel_for(0, static_cast<int>(NUM_THREAD), [&](int threadIdx)
 					{
-						// Copy input
-						for (size_t y = 0; y < mInputLen; ++y)
+						data_t* inputBuf = mInput[threadIdx];
+						data_t* outputBuf = mOutput[threadIdx];
+						data_t* delInBuf = mDeltaIn[threadIdx];
+
+						const data_t* input = inputPtr + threadIdx * mInputSize * BATCH_DIV_THREAD;
+						const char* label = labelPtr + threadIdx * BATCH_DIV_THREAD;
+
+						for (size_t n = 0; n < BATCH_DIV_THREAD; ++n)
 						{
-							for (size_t x = 0; x < mInputLen; ++x)
+							// Copy input
+							for (size_t y = 0; y < mInputLen; ++y)
 							{
-								for (size_t d = 0; d < mInputDepth; ++d)
+								for (size_t x = 0; x < mInputLen; ++x)
 								{
-									inputBuf[getIdx(x, y, d)] = input[mInputLen * mInputLen * d + y * mInputLen + x];
+									for (size_t d = 0; d < mInputDepth; ++d)
+									{
+										inputBuf[getIdx(x, y, d)] = input[mInputLen * mInputLen * d + y * mInputLen + x];
+									}
 								}
 							}
+							size_t truth = static_cast<int>(*label);
+							// Forward propagation
+							for (size_t i = 0; i < NUM_LAYERS; ++i)
+							{
+								mLayers[i]->Forward(threadIdx);
+							}
+							// Set output delta
+							for (size_t i = 0; i < mOutputSize; i++)
+							{
+								data_t y = outputBuf[i];
+								data_t yi = (truth == i) ? 1.f : 0.f;
+								delInBuf[i] = 0.2f * (y - yi);
+							}
+							// Back Propagation
+							for (size_t i = 0; i < NUM_LAYERS; i++)
+							{
+								size_t idx = NUM_LAYERS - i - 1;
+								mLayers[idx]->BackProp(threadIdx);
+							}
+							// Next input
+							input += mInputSize;
+							label += 1;
 						}
-						// Forward propagation
-						for (size_t i = 0; i < numLayers; ++i)
-						{
-							mLayers[i]->Forward(threadIdx);
-						}
-						// Set output delta
-						for (size_t i = 0; i < mOutputSize; i++)
-						{
-							data_t y = outputBuf[i];
-							data_t yi = (label == i) ? 1.f : 0.f;
-							delInBuf[i] = 0.2f * (y - yi);
-						}
-						// Back Propagation
-						for (size_t i = 0; i < numLayers; i++)
-						{
-							size_t idx = numLayers - i - 1;
-							mLayers[idx]->BackProp(threadIdx);
-						}
-						// Next input
-						input += mInputSize;
-					}
-				};
-				for (size_t idx = 0; idx < NUM_THREAD; ++idx)
-				{
-					threads.push_back(std::thread(func, idx, currInput, static_cast<int>(*currLabel), BATCH_DIV_THREAD));
-					currInput += mInputSize;
-					currLabel += 1;
-				}
-				for (size_t i = 0; i < NUM_THREAD; ++i)
-				{
-					threads[i].join();
-				}
-				threads.clear();
+					});
+				inputPtr += mInputSize * BATCH;
+				labelPtr += BATCH;
 				// Fit parameters
-				for (size_t i = 0; i < numLayers; i++)
+				int nl = NUM_LAYERS;
+				size_t ic = 0;
+				while (nl > 0)
 				{
-					mLayers[i]->Update(BATCH, lr);
+					int nt = nl < static_cast<int>(NUM_THREAD) ? nl : NUM_THREAD;
+					concurrency::parallel_for(0, nt, [&](int threadIdx)
+						{
+							mLayers[ic * NUM_THREAD + threadIdx]->Update(BATCH, LR);
+						});
+					nl -= NUM_THREAD;
+					ic += 1;
 				}
+				//for (size_t i = 0; i < NUM_LAYERS; i++)
+				//{
+				//	mLayers[i]->Update(BATCH, LR);
+				//}
 			}
 			// Print current accuracy
 			constexpr size_t NUM_FOLD = 10;
