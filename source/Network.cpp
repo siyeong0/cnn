@@ -132,7 +132,7 @@ namespace cnn
 								{
 									for (size_t d = 0; d < mInputDepth; ++d)
 									{
-										inputBuf[getIdx(x, y, d)] = input[mInputLen * mInputLen * d + y * mInputLen + x];
+										inputBuf[getIdx(x, y, d)] = input[(mInputLen * y + x) * mInputDepth + d];
 									}
 								}
 							}
@@ -214,7 +214,7 @@ namespace cnn
 					{
 						for (size_t d = 0; d < mInputDepth; ++d)
 						{
-							inputBuf[getIdx(x, y, d)] = input[mInputLen * mInputLen * d + y * mInputLen + x];
+							inputBuf[getIdx(x, y, d)] = input[(mInputLen * y + x) * mInputDepth + d];
 						}
 					}
 				}
@@ -294,8 +294,8 @@ namespace cnn
 
 	size_t Network::getIdx(size_t x, size_t y, size_t d) const
 	{
-		//size_t idx = ((mInputLen + 2 * mNumPad) * (mNumPad + y) + (mNumPad + x)) * mInputDepth + d;
-		size_t idx = (mInputLen + 2 * mNumPad) * (mInputLen + 2 * mNumPad) * d + (mInputLen + 2 * mNumPad) * (mNumPad + y) + (mNumPad + x);
+		size_t idx = ((mInputLen + 2 * mNumPad) * (mNumPad + y) + (mNumPad + x)) * mInputDepth + d;
+		//size_t idx = (mInputLen + 2 * mNumPad) * (mInputLen + 2 * mNumPad) * d + (mInputLen + 2 * mNumPad) * (mNumPad + y) + (mNumPad + x);
 		return idx;
 	};
 }

@@ -84,8 +84,8 @@ namespace cnn
 
 	size_t Pool::getMIBufIdx(size_t x, size_t y, size_t d) const
 	{
-		//size_t idx = (OUTPUT_LEN * y + x) * OUTPUT_DEPTH + d;
-		size_t idx = OUTPUT_LEN * OUTPUT_LEN * d + OUTPUT_LEN * y + x;
+		size_t idx = (OUTPUT_LEN * y + x) * OUTPUT_DEPTH + d;
+		//size_t idx = OUTPUT_LEN * OUTPUT_LEN * d + OUTPUT_LEN * y + x;
 		Assert(idx < OUTPUT_SIZE);
 		return idx;
 	}

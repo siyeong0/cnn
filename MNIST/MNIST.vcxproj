@@ -139,19 +139,19 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\source\ConvLayer.cpp" />
-    <ClCompile Include="..\source\FullConnectLayer.cpp" />
+    <ClCompile Include="..\source\Conv.cpp" />
     <ClCompile Include="..\source\ILayer.cpp" />
+    <ClCompile Include="..\source\Linear.cpp" />
     <ClCompile Include="..\source\Network.cpp" />
-    <ClCompile Include="..\source\PoolLayer.cpp" />
+    <ClCompile Include="..\source\Pool.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\source\ConvLayer.h" />
-    <ClInclude Include="..\source\FullConnectLayer.h" />
+    <ClInclude Include="..\source\Conv.h" />
     <ClInclude Include="..\source\ILayer.h" />
+    <ClInclude Include="..\source\Linear.h" />
     <ClInclude Include="..\source\Network.h" />
-    <ClInclude Include="..\source\PoolLayer.h" />
+    <ClInclude Include="..\source\Pool.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -26,8 +26,8 @@ namespace cnn
 			{
 				sum += wgtBuf[getWgtIdx(0, 0, x, y)] * inBuf[x];
 			}
-			sum += mBias[y];
-			outBuf[y] = mActivate(sum);
+			sum += mBias[getBiasIdx(y)];
+			outBuf[getOutIdx(0, 0, y)] = mActivate(sum);
 		}
 	}
 	void Linear::BackProp(size_t threadIdx)
@@ -67,25 +67,25 @@ namespace cnn
 				Assert(false);
 				break;
 			}
-			delBuf[y] = deltaIn * deriv;
+			delBuf[getDeltaIdx(0, 0, y)] = deltaIn * deriv;
 		}
 
 		memset(delOutBuf, 0, sizeof(data_t) * INPUT_SIZE);
 		for (size_t y = 0; y < OUTPUT_SIZE; ++y)
 		{
-			data_t delta = delBuf[y];
+			data_t delta = delBuf[getDeltaIdx(0, 0, y)];
 			for (size_t x = 0; x < INPUT_SIZE; ++x)
 			{
-				data_t in = inBuf[x];
+				data_t in = inBuf[getInIdx(0, 0, x)];
 				data_t wgt = mWgt[getWgtIdx(0, 0, x, y)];
-				delOutBuf[x] += wgt * delta;
+				delOutBuf[getDOutIdx(0, 0, x)] += wgt * delta;
 				wgtDiffBuf[getWgtIdx(0, 0, x, y)] += in * delta;
 			}
 		}
 
 		for (size_t y = 0; y < OUTPUT_SIZE; ++y)
 		{
-			biasDiffBuf[y] += delBuf[y];
+			biasDiffBuf[getBiasIdx(y)] += delBuf[getDeltaIdx(0, 0, y)];
 		}
 	}
 }

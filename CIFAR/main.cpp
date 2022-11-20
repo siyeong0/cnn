@@ -60,8 +60,8 @@ int main()
 		>> full120To64 >> full64To10 >> ENet::END;
 
 	net.SetBatchSize(16);
-	net.SetEpochSize(1);
-	net.SetLearningRate(0.04f);
+	net.SetEpochSize(10);
+	net.SetLearningRate(0.05f);
 	net.SetData(trainDatas, trainLabels, 50000);
 
 
@@ -106,7 +106,8 @@ bool ReadCIFARData(const char* filePath, data_t* datas, char* labels)
 				for (size_t x = 0; x < 32; x++)
 				{
 					size_t i = d * 32 * 32 + y * 32 + x;
-					datas[(32 * 32 * 3) * n + i] = (1.f / 255) * buffer[3073 * n + 1 + i];
+					size_t o = (32 * y + x) * 3 + d;
+					datas[(32 * 32 * 3) * n + o] = (1.f / 255) * buffer[3073 * n + 1 + i];
 				}
 			}
 		}
