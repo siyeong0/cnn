@@ -42,7 +42,7 @@ inline float Min(float x, float y)
 #define MM_AND(X,Y) _mm256_and_ps((X),(Y))
 #define MM_XOR(X,Y) _mm256_xor_ps((X),(Y))
 
-#define MM_AND_I(X,Y) _mm256_xor_epi32((X),(Y))
+#define MM_AND_I(X,Y) _mm256_and_epi32((X),(Y))
 #define MM_XOR_I(X,Y) _mm256_xor_epi32((X),(Y))
 // Compare
 #define MM_CMPGT(X,Y) _mm256_cmp_ps((X),(Y),_CMP_GT_OQ)
