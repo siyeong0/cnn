@@ -26,18 +26,35 @@ inline float Min(float x, float y)
 #ifdef AVX
 #define MM_ALIGNMENT 32
 #define MM_BLOCK 8
-
+// Types
 #define MM_TYPE __m256
-
+#define MM_TYPE_I __m256i
+// Load/Store
 #define MM_LOAD(X) _mm256_load_ps((X))
 #define MM_STORE(X,Y) _mm256_store_ps((X),(Y))
 
+#define MM_STORE_I(X,Y) _mm256_store_si256((X),(Y))
+// Arithmetic operations
 #define MM_ADD(X,Y) _mm256_add_ps((X),(Y))
 #define MM_MUL(X,Y) _mm256_mul_ps((X),(Y))
 
+// Bit operations
+#define MM_AND(X,Y) _mm256_and_ps((X),(Y))
+#define MM_XOR(X,Y) _mm256_xor_ps((X),(Y))
+
+#define MM_AND_I(X,Y) _mm256_xor_epi32((X),(Y))
+#define MM_XOR_I(X,Y) _mm256_xor_epi32((X),(Y))
+// Compare
+#define MM_CMPGT(X,Y) _mm256_cmp_ps((X),(Y),_CMP_GT_OQ)
+#define MM_CMPLT(X,Y) _mm256_cmp_ps((X),(Y),_CMP_LT_OQ)
+
+// Set
 #define MM_SETZERO() _mm256_setzero_ps()
 #define MM_SET1(X) _mm256_set1_ps((X))
 
+#define MM_SETZERO_I() _mm256_setzero_si256()
+#define MM_SET1_I(X) _mm256_set1_epi32(X)
+// Horizontal sum
 inline float MMHorizSum(__m256 V)
 {
 	V = _mm256_hadd_ps(V, V);
@@ -47,6 +64,9 @@ inline float MMHorizSum(__m256 V)
 	return x + y;
 }
 #define MM_HORIZ_SUM(X) MMHorizSum(X)
+// Casting
+#define MM_CAST_F2I(X) _mm256_castps_si256(X)
+
 #endif
 
 template <typename T>
