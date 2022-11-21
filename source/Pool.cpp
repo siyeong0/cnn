@@ -75,7 +75,7 @@ namespace cnn
 					size_t inY = outY * 2 + (maxIdx >> 1);
 					data_t deltaIn = delInBuf[getDInIdx(outX, outY, outD)];
 					Assert(meActFn == EActFn::RELU);
-					data_t deriv = outVal > 0.f ? 1 : 0;
+					data_t deriv = outVal > 0.f ? 1.f : 0.f;
 					delOutBuf[getDOutIdx(inX, inY, outD)] = deriv * deltaIn;
 				}
 			}

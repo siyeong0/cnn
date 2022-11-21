@@ -3,21 +3,69 @@
 #include <vector>
 #include <thread>
 
+#include <intrin.h>
+
 #ifdef _DEBUG
 #define Assert(E) if(!(E)){ __asm{ int 3 } }
 #else
 #define Assert(E) __assume(E)
 #endif
 
+inline float Max(float x, float y)
+{
+	return std::max(x, y);
+}
+
+inline float Min(float x, float y)
+{
+	return std::min(x, y);
+}
+
+#define AVX 1
+
+#ifdef AVX
+#define MM_ALIGNMENT 32
+#define MM_BLOCK 8
+
+#define MM_TYPE __m256
+
+#define MM_LOAD(X) _mm256_load_ps((X))
+#define MM_STORE(X,Y) _mm256_store_ps((X),(Y))
+
+#define MM_ADD(X,Y) _mm256_add_ps((X),(Y))
+#define MM_MUL(X,Y) _mm256_mul_ps((X),(Y))
+
+#define MM_SETZERO() _mm256_setzero_ps()
+#define MM_SET1(X) _mm256_set1_ps((X))
+
+inline float MMHorizSum(__m256 V)
+{
+	V = _mm256_hadd_ps(V, V);
+	V = _mm256_hadd_ps(V, V);
+	float x = _mm_cvtss_f32(_mm256_extractf128_ps(V, 1));
+	float y = _mm256_cvtss_f32(V);
+	return x + y;
+}
+#define MM_HORIZ_SUM(X) MMHorizSum(X)
+#endif
+
 template <typename T>
 inline T* Alloc(size_t size)
 {
+#ifndef AVX
 	return static_cast<T*>(malloc(sizeof(T) * size));
+#else
+	return static_cast<T*>(_aligned_malloc(sizeof(T) * size, MM_ALIGNMENT));
+#endif
 }
 
 inline void Free(void* ptr)
 {
+#ifndef AVX
 	free(ptr);
+#else
+	_aligned_free(ptr);
+#endif
 }
 
 

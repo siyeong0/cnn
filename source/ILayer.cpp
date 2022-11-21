@@ -69,7 +69,7 @@ namespace cnn
 		//		sqrt(ni + no)
 		const size_t FAN = KERNEL_SIZE * (INPUT_DEPTH + OUTPUT_DEPTH);
 		const data_t INIT_MAX = sqrt(6.f / FAN);
-		srand(time(NULL));
+		srand(0);
 		const int RAND_HALF = (RAND_MAX + 1) / 2;
 		for (size_t i = 0; i < WGT_SIZE; ++i)
 		{
@@ -160,7 +160,7 @@ namespace cnn
 
 		data_t* mt = nullptr;
 		data_t* vt = nullptr;
-		data_t alpha = (0.001f * sqrt(batchSize) * learningRate);
+		data_t alpha = (0.001f * static_cast<data_t>(sqrt(batchSize)) * learningRate);
 
 		mt = mWgtGradSum;
 		vt = mWgtVeloVec;
@@ -203,7 +203,9 @@ namespace cnn
 	}
 	size_t ILayer::getWgtIdx(size_t x, size_t y, size_t inD, size_t outD) const
 	{
-		size_t idx = (KERNEL_LEN * KERNEL_LEN * OUTPUT_DEPTH) * inD + (KERNEL_LEN * y + x) * OUTPUT_DEPTH + outD;
+		size_t idx = (KERNEL_LEN * KERNEL_LEN * inD + KERNEL_LEN * y + x) * OUTPUT_DEPTH + outD;
+		//size_t idx = (KERNEL_LEN * KERNEL_LEN * outD + KERNEL_LEN * y + x) * INPUT_DEPTH + inD;
+		//size_t idx = (KERNEL_LEN * KERNEL_LEN * OUTPUT_DEPTH) * inD + (KERNEL_LEN * y + x) * OUTPUT_DEPTH + outD;
 		//size_t idx = KERNEL_LEN * KERNEL_LEN * INPUT_DEPTH * outD + KERNEL_LEN * KERNEL_LEN * inD + KERNEL_LEN * y + x;
 		Assert(idx < WGT_SIZE);
 		return idx;
