@@ -60,8 +60,8 @@ int main()
 		>> full120To64 >> full64To10 >> ENet::END;
 
 	net.SetBatchSize(16);
-	net.SetEpochSize(10);
-	net.SetLearningRate(0.05f);
+	net.SetEpochSize(30);
+	net.SetLearningRate(0.1f);
 	net.SetData(trainDatas, trainLabels, 50000);
 
 
