@@ -26,7 +26,7 @@ namespace cnn
 		data_t* inBuf = mIn[threadIdx];
 		data_t* outBuf = mOut[threadIdx];
 		size_t* maxIdxBuf = mMaxIdxBuf[threadIdx];
-
+#ifndef AVX
 		for (size_t outX = 0; outX < OUTPUT_LEN; ++outX)
 		{
 			for (size_t outY = 0; outY < OUTPUT_LEN; ++outY)
@@ -52,6 +52,46 @@ namespace cnn
 				}
 			}
 		}
+#else
+		for (size_t outX = 0; outX < OUTPUT_LEN; ++outX)
+		{
+			for (size_t outY = 0; outY < OUTPUT_LEN; ++outY)
+			{
+				for (size_t outD = 0; outD < OUTPUT_DEPTH; outD += MM_BLOCK)
+				{
+					MM_TYPE mmMax = MM_LOAD(&inBuf[getInIdx(outX * KERNEL_LEN, outY * KERNEL_LEN, outD)]);
+					MM_TYPE_I mmMIdx = MM_SETZERO_I();
+					for (size_t kY = 0; kY < KERNEL_LEN; ++kY)
+					{
+						for (size_t kX = 0; kX < KERNEL_LEN; ++kX)
+						{
+							MM_TYPE mmIn = MM_LOAD(&inBuf[getInIdx(outX * KERNEL_LEN + kX, outY * KERNEL_LEN + kY, outD)]);
+							MM_TYPE_I mmIdx = MM_SET1_I(kY * KERNEL_LEN + kX);
+
+							MM_TYPE mmCmpMask = MM_CMPLT(mmMax, mmIn);
+							// Get max value
+							MM_TYPE mmXorMask = MM_XOR(mmMax, mmIn);
+							mmXorMask = MM_AND(mmXorMask, mmCmpMask);
+							mmMax = MM_XOR(mmMax, mmXorMask);
+							// Get max index
+							MM_TYPE_I mmXorMaskIdx = MM_XOR_I(mmMIdx, mmIdx);
+							mmXorMaskIdx = MM_AND_I(mmXorMaskIdx, MM_CAST_F2I(mmCmpMask));
+							mmMIdx = MM_XOR_I(mmMIdx, mmXorMaskIdx);
+						}
+					}
+					// Get output
+					float* dest = &outBuf[getOutIdx(outX, outY, outD)];
+					MM_STORE(dest, mmMax);
+					for (size_t i = 0; i < MM_BLOCK; ++i)
+					{
+						dest[i] = mActivate(dest[i]);
+					}
+					//Store max val's idx
+					MM_STORE_I((__m256i*)(&maxIdxBuf[getMIBufIdx(outX, outY, outD)]), mmMIdx);
+				}
+			}
+		}
+#endif
 	}
 
 	void Pool::BackProp(size_t threadIdx)
