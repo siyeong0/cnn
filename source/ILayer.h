@@ -125,13 +125,47 @@ namespace cnn
 
 		void Update(const size_t batchSize, const data_t learningRate);
 	protected:
-		size_t getOutIdx(size_t x, size_t y, size_t d) const;
-		size_t getInIdx(size_t x, size_t y, size_t d) const;
-		size_t getWgtIdx(size_t x, size_t y, size_t inD, size_t outD) const;
-		size_t getBiasIdx(size_t outD) const;
-		size_t getDeltaIdx(size_t x, size_t y, size_t d) const;
-		size_t getDInIdx(size_t x, size_t y, size_t d) const;
-		size_t getDOutIdx(size_t x, size_t y, size_t d) const;
+		inline size_t getInIdx(size_t x, size_t y, size_t d) const
+		{
+			size_t idx = (INPUT_PAD_LEN * y + x) * INPUT_DEPTH + d;
+			Assert(idx < INPUT_SIZE);
+			return idx;
+		}
+		inline size_t getOutIdx(size_t x, size_t y, size_t d) const
+		{
+			size_t idx = ((OUTPUT_LEN + 2 * mOutPad) * (y + mOutPad) + (mOutPad + x)) * OUTPUT_DEPTH + d;
+			Assert(idx < (OUTPUT_LEN + 2 * mOutPad)* (OUTPUT_LEN + 2 * mOutPad)* OUTPUT_DEPTH);
+			return idx;
+		}
+		inline size_t getWgtIdx(size_t x, size_t y, size_t inD, size_t outD) const
+		{
+			size_t idx = (KERNEL_LEN * KERNEL_LEN * inD + KERNEL_LEN * y + x) * OUTPUT_DEPTH + outD;
+			Assert(idx < WGT_SIZE);
+			return idx;
+		}
+		inline size_t getBiasIdx(size_t outD) const
+		{
+			Assert(outD < OUTPUT_DEPTH);
+			return outD;
+		}
+		inline size_t getDeltaIdx(size_t x, size_t y, size_t d) const
+		{
+			size_t idx = (OUTPUT_LEN * y + x) * OUTPUT_DEPTH + d;
+			Assert(idx < DELTA_SIZE);
+			return idx;
+		}
+		inline size_t getDInIdx(size_t x, size_t y, size_t d) const
+		{
+			size_t idx = (OUTPUT_LEN * y + x) * OUTPUT_DEPTH + d;
+			Assert(idx < DELTA_IN_SIZE);
+			return idx;
+		}
+		inline size_t getDOutIdx(size_t x, size_t y, size_t d) const
+		{
+			size_t idx = (INPUT_LEN * y + x) * INPUT_DEPTH + d;
+			Assert(idx < DELTA_OUT_SIZE);
+			return idx;
+		}
 	protected:	// vector elements are buffers allocated to threads
 		std::vector<data_t*> mIn;
 		std::vector<data_t*> mOut;
