@@ -76,7 +76,7 @@ namespace cnn
 
 					float* dest = &outBuf[getOutIdx(outX, outY, outD)];
 					MM_STORE(dest, mmSum);
-					for (size_t i = 0; i < 8; ++i)
+					for (size_t i = 0; i < MM_BLOCK; ++i)
 					{
 						dest[i] = mActivate(dest[i]);
 					}
@@ -210,8 +210,8 @@ namespace cnn
 					MM_TYPE mmZero = MM_SETZERO();
 					MM_TYPE mmOne = MM_SET1(1.f);
 					Assert(meActFn == EActFn::RELU);
-					MM_TYPE mmAnd = _mm256_cmp_ps(mmOut, mmZero, _CMP_GT_OQ);
-					MM_TYPE mmDeriv = _mm256_and_ps(mmOne, mmAnd);
+					MM_TYPE mmAnd = MM_CMPGT(mmOut, mmZero);
+					MM_TYPE mmDeriv = MM_AND(mmOne, mmAnd);
 					// Multyply
 					MM_TYPE mmMul = MM_MUL(mmDIn, mmDeriv);
 					// Store result
