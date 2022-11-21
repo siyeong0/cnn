@@ -21,6 +21,7 @@ namespace cnn
 		data_t* inBuf = mIn[threadIdx];
 		data_t* outBuf = mOut[threadIdx];
 		data_t* wgtBuf = mWgt;
+		data_t* biasBuf = mBias;
 
 		for (size_t depth = 0; depth < OUTPUT_DEPTH; ++depth)
 		{
@@ -38,7 +39,7 @@ namespace cnn
 							sum += in * wgt;
 						}
 					}
-					sum += mBias[getBiasIdx(depth)];
+					sum += biasBuf[getBiasIdx(depth)];
 					outBuf[getOutIdx(outX, outY, depth)] = mActivate(sum);
 				}
 			}
@@ -57,14 +58,14 @@ namespace cnn
 		data_t* biasDiffBuf = mBiasDiff[threadIdx];
 
 		// Get global delta
-		for (size_t outD = 0; outD < OUTPUT_DEPTH; ++outD)
+		for (size_t depth = 0; depth < OUTPUT_DEPTH; ++depth)
 		{
 			for (size_t outY = 0; outY < OUTPUT_LEN; ++outY)
 			{
 				for (size_t outX = 0; outX < OUTPUT_LEN; ++outX)
 				{
-					data_t deltaIn = delInBuf[getDInIdx(outX, outY, outD)];
-					data_t out = outBuf[getOutIdx(outX, outY, outD)];
+					data_t deltaIn = delInBuf[getDInIdx(outX, outY, depth)];
+					data_t out = outBuf[getOutIdx(outX, outY, depth)];
 					data_t deriv = 0.f;
 					switch (meActFn)
 					{
@@ -78,7 +79,7 @@ namespace cnn
 						Assert(false);
 						break;
 					}
-					delBuf[getDeltaIdx(outX, outY, outD)] = deltaIn * deriv;
+					delBuf[getDeltaIdx(outX, outY, depth)] = deltaIn * deriv;
 				}
 			}
 		}
@@ -118,28 +119,32 @@ namespace cnn
 		}
 
 		// Get out gradient : prev layer's input gradient
-		memset(delOutBuf, 0, sizeof(data_t) * DELTA_OUT_SIZE);
+		const int IPAD = static_cast<int>(NUM_PAD);
 		for (size_t depth = 0; depth < OUTPUT_DEPTH; ++depth)
 		{
-			for (size_t outY = 0; outY < OUTPUT_LEN; ++outY)
+			for (int inY = 0; inY < INPUT_LEN; ++inY)
 			{
-				for (size_t outX = 0; outX < OUTPUT_LEN; ++outX)
+				for (int inX = 0; inX < INPUT_LEN; ++inX)
 				{
-					data_t delta = delBuf[getDeltaIdx(outX, outY, depth)];
-					for (size_t kY = 0; kY < KERNEL_LEN; ++kY)
+					const int BX = Max(IPAD - inX, 0);
+					const int BY = Max(IPAD - inY, 0);
+					const int EX = Min(INPUT_LEN + IPAD - inX, KERNEL_LEN);
+					const int EY = Min(INPUT_LEN + IPAD - inY, KERNEL_LEN);
+					data_t sum = 0.f;
+					for (size_t kY = BY; kY < EY; ++kY)
 					{
-						for (size_t kX = 0; kX < KERNEL_LEN; ++kX)
+						for (size_t kX = BX; kX < EX; ++kX)
 						{
-							size_t inY = outY + kY - NUM_PAD;
-							size_t inX = outX + kX - NUM_PAD;
-							if (inX >= INPUT_LEN || inY >= INPUT_LEN)
-							{
-								continue;
-							}
-							data_t wgt = wgtBuf[getWgtIdx(kX, kY, depth, depth)];
-							delOutBuf[getDOutIdx(inX, inY, depth)] += delta * wgt;
+							size_t rkx = KERNEL_LEN - 1 - kX;
+							size_t rky = KERNEL_LEN - 1 - kY;
+							size_t outX = inX - IPAD + kX;
+							size_t outY = inY - IPAD + kY;
+							data_t delta = delBuf[getDeltaIdx(outX, outY, depth)];
+							data_t wgt = wgtBuf[getWgtIdx(rkx, rky, depth, depth)];
+							sum += delta * wgt;
 						}
 					}
+					delOutBuf[getDOutIdx(inX, inY, depth)] = sum;
 				}
 			}
 		}
