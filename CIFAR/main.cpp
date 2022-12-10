@@ -61,7 +61,7 @@ int main()
 		>> full1024To64 >> full64To10 >> ENet::END;
 
 	net.SetBatchSize(16);
-	net.SetEpochSize(3);
+	net.SetEpochSize(10);
 	net.SetLearningRate(0.1f);
 	net.SetData(trainDatas, trainLabels, 50000);
 
