@@ -68,13 +68,13 @@
 ### [Example](#example)모델의 학습시간 측정, epoch size 5, batch size 16 (mt = multi thread)
 | |none|mt|mt/avx|pytorch(gpu)|
 |--|:----:|:------------:|:------------------:|:------------:|
-| sec|11125|     1015  |     167          |      87    |
+|time(sec)|11125|     1015  |     167          |      87    |
 
 ### Depthwise separable convolution을 적용했을 때의 학습 시간, 정확도 비교
 ||none|dwsep|
 |:---:|:---:|:---:|
-|time|167|92|
-|acc|76.6%|64.0%|
+|time(sec)|167|92|
+|acc(%)|76.6|64.0|
 ## Add custom layer
 ### 아래 형식에 맞게 Custom layer 구현
     ```C++ 
