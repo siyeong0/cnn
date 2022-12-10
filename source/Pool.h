@@ -19,6 +19,6 @@ namespace cnn
 			return idx;
 		}
 	private:
-		std::vector<size_t*> mMaxIdxBuf;	// Buffer to store max value's idx
+		std::vector<unsigned int*> mMaxIdxBuf;	// Buffer to store max value's idx
 	};
 }

@@ -9,7 +9,7 @@ namespace cnn
 	{
 		for (size_t i = 0; i < NUM_THREAD; i++)
 		{
-			mMaxIdxBuf.push_back(Alloc<size_t>(OUTPUT_SIZE));
+			mMaxIdxBuf.push_back(Alloc<unsigned int>(OUTPUT_SIZE));
 		}
 	}
 
@@ -25,7 +25,7 @@ namespace cnn
 	{
 		data_t* inBuf = mIn[threadIdx];
 		data_t* outBuf = mOut[threadIdx];
-		size_t* maxIdxBuf = mMaxIdxBuf[threadIdx];
+		unsigned int* maxIdxBuf = mMaxIdxBuf[threadIdx];
 		if (mbUseAvx == false)
 		{
 			for (size_t outX = 0; outX < OUTPUT_LEN; ++outX)
@@ -41,7 +41,7 @@ namespace cnn
 						data_t v2 = inBuf[getInIdx(outX * 2 + 0, outY * 2 + 1, outD)];
 						data_t v3 = inBuf[getInIdx(outX * 2 + 1, outY * 2 + 1, outD)];
 						data_t maxVal = v0;
-						size_t maxIdx = 0x0;
+						unsigned int maxIdx = 0x0;
 						if (v1 > maxVal) { maxVal = v1; maxIdx = 0x1; }
 						if (v2 > maxVal) { maxVal = v2; maxIdx = 0x2; }
 						if (v3 > maxVal) { maxVal = v3; maxIdx = 0x3; }
@@ -69,7 +69,7 @@ namespace cnn
 							for (size_t kX = 0; kX < KERNEL_LEN; ++kX)
 							{
 								MM_TYPE mmIn = MM_LOAD(&inBuf[getInIdx(outX * KERNEL_LEN + kX, outY * KERNEL_LEN + kY, outD)]);
-								MM_TYPE_I mmIdx = MM_SET1_I(kY * KERNEL_LEN + kX);
+								MM_TYPE_I mmIdx = MM_SET1_I(static_cast<int>(kY * KERNEL_LEN + kX));
 
 								MM_TYPE mmCmpMask = MM_CMPLT(mmMax, mmIn);
 								// Get max value
@@ -90,7 +90,7 @@ namespace cnn
 							dest[i] = mActivate(dest[i]);
 						}
 						//Store max val's idx
-						MM_STORE_I((__m256i*)(&maxIdxBuf[getMIBufIdx(outX, outY, outD)]), mmMIdx);
+						MM_STORE_I((MM_TYPE_I*)(&maxIdxBuf[getMIBufIdx(outX, outY, outD)]), mmMIdx);
 					}
 				}
 			}
@@ -103,7 +103,7 @@ namespace cnn
 		data_t* outBuf = mOut[threadIdx];
 		data_t* delInBuf = mDeltaIn[threadIdx];
 		data_t* delOutBuf = mDeltaOut[threadIdx];
-		size_t* maxIdxBuf = mMaxIdxBuf[threadIdx];
+		unsigned int* maxIdxBuf = mMaxIdxBuf[threadIdx];
 
 		memset(delOutBuf, 0, sizeof(data_t) * DELTA_OUT_SIZE);
 		for (size_t outX = 0; outX < OUTPUT_LEN; ++outX)

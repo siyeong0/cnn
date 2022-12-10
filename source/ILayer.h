@@ -6,7 +6,7 @@
 #include <intrin.h>
 
 #ifdef _DEBUG
-#define Assert(E) if(!(E)){ __asm{ int 3 } }
+#define Assert(E) if(!(E)){ __debugbreak(); }
 #else
 #define Assert(E) __assume(E)
 #endif
@@ -68,6 +68,7 @@ inline float MMHorizSum(__m256 V)
 #define MM_CAST_F2I(X) _mm256_castps_si256(X)
 
 #endif
+
 
 template <typename T>
 inline T* Alloc(size_t size)
