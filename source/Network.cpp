@@ -97,8 +97,10 @@ namespace cnn
 		const data_t LR = mLearningRate;
 		for (size_t e = 0; e < mEpochSize; ++e)
 		{
-			data_t* inputPtr = mData;
-			char* labelPtr = mLabels;
+			// Shuffle datas
+			std::random_device rd;
+			std::mt19937 g(rd());
+			std::shuffle(mImages.begin(), mImages.end(), g);
 			// Print progress
 			std::cout << "EPOCH : " << e + 1 << "\n";
 			std::cout << "|";
@@ -126,11 +128,11 @@ namespace cnn
 						data_t* outputBuf = mOutput[threadIdx];
 						data_t* delInBuf = mDeltaIn[threadIdx];
 
-						const data_t* input = inputPtr + threadIdx * mInputSize * BATCH_DIV_THREAD;
-						const char* label = labelPtr + threadIdx * BATCH_DIV_THREAD;
-
 						for (size_t n = 0; n < BATCH_DIV_THREAD; ++n)
 						{
+							IM currIm = mImages[be * BATCH + threadIdx * (n + 1)];
+							const data_t* input = currIm.Data;
+							const int label = currIm.Class;
 							// Copy input
 							for (size_t y = 0; y < mInputLen; ++y)
 							{
@@ -142,17 +144,17 @@ namespace cnn
 									}
 								}
 							}
-							size_t truth = static_cast<int>(*label);
 							// Forward propagation
 							for (size_t i = 0; i < NUM_LAYERS; ++i)
 							{
 								mLayers[i]->Forward(threadIdx);
 							}
 							// Set output delta
+							size_t truth = label;
 							for (size_t i = 0; i < mOutputSize; i++)
 							{
 								data_t y = outputBuf[i];
-								data_t yi = (truth == i) ? 1.f : 0.f;
+								data_t yi = (label == i) ? 1.f : 0.f;
 								delInBuf[i] = 0.2f * (y - yi);
 							}
 							// Back Propagation
@@ -161,13 +163,8 @@ namespace cnn
 								size_t idx = NUM_LAYERS - i - 1;
 								mLayers[idx]->BackProp(threadIdx);
 							}
-							// Next input
-							input += mInputSize;
-							label += 1;
 						}
 					});
-				inputPtr += mInputSize * BATCH;
-				labelPtr += BATCH;
 				// Fit parameters
 				int nl = NUM_LAYERS;
 				size_t ic = 0;
@@ -259,10 +256,15 @@ namespace cnn
 		mData = td;
 		mLabels = ld;
 		mNumImages = n;
+		mImages.reserve(mNumImages);
 		for (size_t i = 0; i < mNumImages; ++i)
 		{
-			mImages.push_back(td);
+			Network::IM im;
+			im.Data = td;
+			im.Class = static_cast<int>(*ld);
+			mImages.push_back(im);
 			td += mInputSize;
+			ld += 1;
 		}
 	}
 

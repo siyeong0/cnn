@@ -40,9 +40,14 @@ namespace cnn
 		std::vector<data_t*> mDeltaIn;
 
 		// Raw input images
+		struct IM
+		{
+			data_t* Data;
+			int Class;
+		};
 		data_t* mData;
-		std::vector<data_t*> mImages;
 		char* mLabels;
+		std::vector<IM> mImages;
 		size_t mNumImages;
 
 		size_t mBatchSize;
