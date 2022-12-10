@@ -19,11 +19,11 @@ int main()
 {
 	data_t* trainDatas = new float[32 * 32 * 3 * 50000];
 	char* trainLabels = new char[50000];
-	ReadCIFARData("resource/data_batch_1.bin", trainDatas + 32 * 32 * 3 * 0, trainLabels + 0);
-	ReadCIFARData("resource/data_batch_2.bin", trainDatas + 32 * 32 * 3 * 10000, trainLabels + 10000);
-	ReadCIFARData("resource/data_batch_3.bin", trainDatas + 32 * 32 * 3 * 20000, trainLabels + 20000);
-	ReadCIFARData("resource/data_batch_4.bin", trainDatas + 32 * 32 * 3 * 30000, trainLabels + 30000);
-	ReadCIFARData("resource/data_batch_5.bin", trainDatas + 32 * 32 * 3 * 40000, trainLabels + 40000);
+	if (!ReadCIFARData("resource/data_batch_1.bin", trainDatas + 32 * 32 * 3 * 0, trainLabels + 0)) abort();
+	if (!ReadCIFARData("resource/data_batch_2.bin", trainDatas + 32 * 32 * 3 * 10000, trainLabels + 10000)) abort();
+	if (!ReadCIFARData("resource/data_batch_3.bin", trainDatas + 32 * 32 * 3 * 20000, trainLabels + 20000)) abort();
+	if (!ReadCIFARData("resource/data_batch_4.bin", trainDatas + 32 * 32 * 3 * 30000, trainLabels + 30000)) abort();
+	if (!ReadCIFARData("resource/data_batch_5.bin", trainDatas + 32 * 32 * 3 * 40000, trainLabels + 40000)) abort();
 	data_t* testDatas = new float[32 * 32 * 3 * 10000];
 	char* testLabels = new char[10000];
 	ReadCIFARData("resource/test_batch.bin", testDatas, testLabels);
@@ -89,7 +89,7 @@ bool ReadCIFARData(const char* filePath, data_t* datas, char* labels)
 	std::ifstream file(filePath, std::ios::binary);
 	if (!file.is_open())
 	{
-		Assert(false);
+		return false;
 	}
 
 	size_t totalSize = (32 * 32 * 3 + 1) * 10000;

@@ -14,12 +14,12 @@ int main(void)
 {
 	data_t* trainDatas = new float[784 * 60000];
 	char* trainLabels = new char[60000];
-	ReadMNISTTrainingData("resource/train-images.idx3-ubyte", trainDatas);
-	ReadMNISTLabelData("resource/train-labels.idx1-ubyte", trainLabels);
+	if (!ReadMNISTTrainingData("resource/train-images.idx3-ubyte", trainDatas)) abort();
+	if (!ReadMNISTLabelData("resource/train-labels.idx1-ubyte", trainLabels)) abort();
 	data_t* testDatas = new float[784 * 10000];
 	char* testLabels = new char[10000];
-	ReadMNISTTrainingData("resource/t10k-images.idx3-ubyte", testDatas);
-	ReadMNISTLabelData("resource/t10k-labels.idx1-ubyte", testLabels);
+	if (!ReadMNISTTrainingData("resource/t10k-images.idx3-ubyte", testDatas)) abort();
+	if (!ReadMNISTLabelData("resource/t10k-labels.idx1-ubyte", testLabels)) abort();
 
 	using namespace cnn;
 
@@ -65,7 +65,7 @@ bool ReadMNISTTrainingData(const char* filePath, data_t* dest)
 	std::ifstream file(filePath, std::ios::binary);
 	if (!file.is_open())
 	{
-		Assert(false);
+		return false;
 	}
 
 	uint32_t magicNum = 0;
