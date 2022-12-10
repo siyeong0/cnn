@@ -37,6 +37,7 @@ namespace cnn
 		, mOutPad(0)
 		, mB1T(0.9f)
 		, mB2T(0.99f)
+		, mbUseAvx(false)
 	{
 		// Alloc buffers
 		for (size_t i = 0; i < NUM_THREAD; ++i)

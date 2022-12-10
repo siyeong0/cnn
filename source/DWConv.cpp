@@ -22,25 +22,61 @@ namespace cnn
 		data_t* outBuf = mOut[threadIdx];
 		data_t* wgtBuf = mWgt;
 		data_t* biasBuf = mBias;
-
-		for (size_t depth = 0; depth < OUTPUT_DEPTH; ++depth)
+		if (mbUseAvx == false)
+		{
+			for (size_t depth = 0; depth < OUTPUT_DEPTH; ++depth)
+			{
+				for (size_t outY = 0; outY < OUTPUT_LEN; ++outY)
+				{
+					for (size_t outX = 0; outX < OUTPUT_LEN; ++outX)
+					{
+						data_t sum = 0.f;
+						for (size_t kY = 0; kY < KERNEL_LEN; ++kY)
+						{
+							for (size_t kX = 0; kX < KERNEL_LEN; ++kX)
+							{
+								data_t in = inBuf[getInIdx(outX + kX, outY + kY, depth)];
+								data_t wgt = wgtBuf[getWgtIdx(kX, kY, 0, depth)];
+								sum += in * wgt;
+							}
+						}
+						sum += biasBuf[getBiasIdx(depth)];
+						outBuf[getOutIdx(outX, outY, depth)] = mActivate(sum);
+					}
+				}
+			}
+		}
+		else
 		{
 			for (size_t outY = 0; outY < OUTPUT_LEN; ++outY)
 			{
 				for (size_t outX = 0; outX < OUTPUT_LEN; ++outX)
 				{
-					data_t sum = 0.f;
-					for (size_t kY = 0; kY < KERNEL_LEN; ++kY)
+					for (size_t depth = 0; depth < OUTPUT_DEPTH; depth += MM_BLOCK)
 					{
-						for (size_t kX = 0; kX < KERNEL_LEN; ++kX)
+						MM_TYPE mmSum = MM_SETZERO();
+						for (size_t kY = 0; kY < KERNEL_LEN; ++kY)
 						{
-							data_t in = inBuf[getInIdx(outX + kX, outY + kY, depth)];
-							data_t wgt = wgtBuf[getWgtIdx(kX, kY, depth, depth)];
-							sum += in * wgt;
+							for (size_t kX = 0; kX < KERNEL_LEN; ++kX)
+							{
+								data_t in = inBuf[getInIdx(outX + kX, outY + kY, depth)];
+								MM_TYPE mmIn = MM_LOAD(&inBuf[getInIdx(outX + kX, outY + kY, 0)]);
+								MM_TYPE mmWgt = MM_LOAD(&wgtBuf[getWgtIdx(kX, kY, 0, depth)]);
+
+								MM_TYPE mmMul = MM_MUL(mmIn, mmWgt);
+								mmSum = MM_ADD(mmSum, mmMul);
+							}
+						}
+						MM_TYPE mmBias = MM_LOAD(&biasBuf[getBiasIdx(depth)]);
+						mmSum = MM_ADD(mmSum, mmBias);
+
+						float* dest = &outBuf[getOutIdx(outX, outY, depth)];
+						MM_STORE(dest, mmSum);
+						for (size_t i = 0; i < MM_BLOCK; ++i)
+						{
+							dest[i] = mActivate(dest[i]);
 						}
 					}
-					sum += biasBuf[getBiasIdx(depth)];
-					outBuf[getOutIdx(outX, outY, depth)] = mActivate(sum);
 				}
 			}
 		}
@@ -57,6 +93,7 @@ namespace cnn
 		data_t* wgtDiffBuf = mWgtDiff[threadIdx];
 		data_t* biasDiffBuf = mBiasDiff[threadIdx];
 
+		// TODO: AVX impl
 		// Get global delta
 		for (size_t depth = 0; depth < OUTPUT_DEPTH; ++depth)
 		{
@@ -100,7 +137,7 @@ namespace cnn
 							sum += delta * valIn;
 						}
 					}
-					wgtDiffBuf[getWgtIdx(kX, kY, depth, depth)] += sum;
+					wgtDiffBuf[getWgtIdx(kX, kY, 0, depth)] += sum;
 				}
 			}
 		}
@@ -140,7 +177,7 @@ namespace cnn
 							size_t outX = inX - IPAD + kX;
 							size_t outY = inY - IPAD + kY;
 							data_t delta = delBuf[getDeltaIdx(outX, outY, depth)];
-							data_t wgt = wgtBuf[getWgtIdx(rkx, rky, depth, depth)];
+							data_t wgt = wgtBuf[getWgtIdx(rkx, rky, 0, depth)];
 							sum += delta * wgt;
 						}
 					}

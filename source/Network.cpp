@@ -79,15 +79,21 @@ namespace cnn
 		}
 	}
 
-	void Network::Fit()
+	void Network::Fit(EAvx eAvx)
 	{
 		std::vector<std::thread> threads;
 		const size_t NUM_LAYERS = mLayers.size();
+		// Clear input buffers
 		for (size_t i = 0; i < mInput.size(); ++i)
 		{
 			memset(mInput[i], 0, sizeof(data_t) * (mInputLen + 2 * mNumPad) * (mInputLen + 2 * mNumPad) * mInputDepth);
 		}
-
+		//
+		for (size_t i = 0; i < NUM_LAYERS; ++i)
+		{
+			mLayers[i]->UseAvx(eAvx == EAvx::TRUE);
+		}
+		//
 		const data_t LR = mLearningRate;
 		for (size_t e = 0; e < mEpochSize; ++e)
 		{
@@ -175,10 +181,6 @@ namespace cnn
 					nl -= NUM_THREAD;
 					ic += 1;
 				}
-				//for (size_t i = 0; i < NUM_LAYERS; i++)
-				//{
-				//	mLayers[i]->Update(BATCH, LR);
-				//}
 			}
 			// Print current accuracy
 			constexpr size_t NUM_FOLD = 10;
@@ -257,6 +259,11 @@ namespace cnn
 		mData = td;
 		mLabels = ld;
 		mNumImages = n;
+		for (size_t i = 0; i < mNumImages; ++i)
+		{
+			mImages.push_back(td);
+			td += mInputSize;
+		}
 	}
 
 	void Network::SetBatchSize(size_t b)

@@ -124,6 +124,11 @@ namespace cnn
 		void InitBatch();
 
 		void Update(const size_t batchSize, const data_t learningRate);
+
+		void UseAvx(bool b)
+		{
+			mbUseAvx = b && (OUTPUT_DEPTH % MM_BLOCK == 0);
+		}
 	protected:
 		inline size_t getInIdx(size_t x, size_t y, size_t d) const
 		{
@@ -185,7 +190,9 @@ namespace cnn
 		// Activation func
 		EActFn meActFn;
 		std::function<data_t(data_t)> mActivate;
-	protected:	// Constants for buffer sizes
+		// Flags
+		bool mbUseAvx;
+		// Constants for buffer sizes
 		const size_t NUM_PAD;
 		const size_t INPUT_LEN;
 		const size_t INPUT_PAD_LEN;

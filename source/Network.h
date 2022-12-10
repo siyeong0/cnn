@@ -4,6 +4,12 @@
 
 namespace cnn
 {
+	enum class EAvx
+	{
+		FALSE = 0,
+		TRUE = 1,
+	};
+
 	class Network
 	{
 	public:
@@ -16,7 +22,7 @@ namespace cnn
 		Network(const Network&) = delete;
 		Network& operator=(const Network&) = delete;
 
-		void Fit();
+		void Fit(EAvx USE_AVX = EAvx::TRUE);
 		data_t GetAccuracy(data_t* data, char* labels, size_t n);
 
 		void SetData(data_t* td, char* ld, size_t n);
@@ -35,6 +41,7 @@ namespace cnn
 
 		// Raw input images
 		data_t* mData;
+		std::vector<data_t*> mImages;
 		char* mLabels;
 		size_t mNumImages;
 
