@@ -61,10 +61,6 @@
     }
     ```
 ## Performance
-### MNIST
-- [MNIST](https://github.com/siyeong0/cnn/tree/main/MNIST) 테스트 데이터에서 최대 98.6%
-### CIFAR10
-- [CIFAR10](https://github.com/siyeong0/cnn/tree/main/CIFAR) 테스트 데이터에서 최대 76.6%
 ### Hardware
 - 11th Gen Intel(R) Core(TM) i7-11700K @ 3.60GHz   3.60 GHz
 - NVIDIA GeForce RTX 3060 Ti
@@ -78,6 +74,10 @@
 |:---:|:---:|:---:|
 |time(sec)|167|92|
 |acc(%)|76.6|64.0|
+### MNIST
+- [MNIST](https://github.com/siyeong0/cnn/tree/main/MNIST) 테스트 데이터에서 최대 98.6%
+### CIFAR10
+- [CIFAR10](https://github.com/siyeong0/cnn/tree/main/CIFAR) 테스트 데이터에서 최대 76.6%
 ## Add custom layer
 ### 아래 형식에 맞게 Custom layer 구현
     ```C++ 
