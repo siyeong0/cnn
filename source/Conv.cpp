@@ -173,8 +173,8 @@ namespace cnn
 				{
 					const int BX = Max(IPAD - inX, 0);
 					const int BY = Max(IPAD - inY, 0);
-					const int EX = Min(INPUT_LEN + IPAD - inX, KERNEL_LEN);
-					const int EY = Min(INPUT_LEN + IPAD - inY, KERNEL_LEN);
+					const int EX = Min(OUTPUT_LEN, Min(INPUT_LEN + IPAD - inX, KERNEL_LEN));
+					const int EY = Min(OUTPUT_LEN, Min(INPUT_LEN + IPAD - inY, KERNEL_LEN));
 					for (size_t inD = 0; inD < INPUT_DEPTH; ++inD)
 					{
 						data_t sum = 0.f;
@@ -186,8 +186,8 @@ namespace cnn
 								{
 									size_t rkx = KERNEL_LEN - 1 - kX;
 									size_t rky = KERNEL_LEN - 1 - kY;
-									size_t outX = inX - IPAD + kX;
-									size_t outY = inY - IPAD + kY;
+									size_t outX = Min(OUTPUT_LEN - 1, inX - IPAD + kX);
+									size_t outY = Min(OUTPUT_LEN - 1, inY - IPAD + kY);
 									data_t delta = delBuf[getDeltaIdx(outX, outY, outD)];
 									data_t wgt = wgtBuf[getWgtIdx(rkx, rky, inD, outD)];
 									sum += delta * wgt;
@@ -285,8 +285,8 @@ namespace cnn
 				{
 					const int BX = Max(IPAD - inX, 0);
 					const int BY = Max(IPAD - inY, 0);
-					const int EX = Min(INPUT_LEN + IPAD - inX, KERNEL_LEN);
-					const int EY = Min(INPUT_LEN + IPAD - inY, KERNEL_LEN);
+					const int EX = Min(OUTPUT_LEN, Min(INPUT_LEN + IPAD - inX, KERNEL_LEN));
+					const int EY = Min(OUTPUT_LEN, Min(INPUT_LEN + IPAD - inY, KERNEL_LEN));
 					for (size_t inD = 0; inD < INPUT_DEPTH; ++inD)
 					{
 						MM_TYPE mmSum = MM_SETZERO();
@@ -298,8 +298,8 @@ namespace cnn
 								{
 									size_t rkx = KERNEL_LEN - 1 - kX;
 									size_t rky = KERNEL_LEN - 1 - kY;
-									size_t outX = inX - IPAD + kX;
-									size_t outY = inY - IPAD + kY;
+									size_t outX = Min(OUTPUT_LEN - 1,inX - IPAD + kX);
+									size_t outY = Min(OUTPUT_LEN - 1, inY - IPAD + kY);
 									MM_TYPE mmDelta = MM_LOAD(&delBuf[getDeltaIdx(outX, outY, outD)]);
 									MM_TYPE mmWgt = MM_LOAD(&wgtBuf[getWgtIdx(rkx, rky, inD, outD)]);
 									MM_TYPE mmMul = MM_MUL(mmDelta, mmWgt);

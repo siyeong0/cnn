@@ -33,8 +33,8 @@ int main(void)
 	net >> conv32x32x1 >> pool28x28x6 >> conv14x14x6 >> pool10x10x16 >> conv5x5x16 >> full120To10 >> ENet::END;
 
 	net.SetBatchSize(16);
-	net.SetEpochSize(1);
-	net.SetLearningRate(0.01f);
+	net.SetEpochSize(10);
+	net.SetLearningRate(0.1f);
 	net.SetData(trainDatas, trainLabels, 50000);
 	net.Fit();
 	std::cout << std::endl << "TEST ACCURACY : " << net.GetAccuracy(testDatas, testLabels, 10000);
