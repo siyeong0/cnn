@@ -1,7 +1,4 @@
 # Convolution neural network in C++
-## Contents
-* [Implementations](#layers)
-* [License](#license)
 ## Implementations
 ### Layers
 - Convolution 2d layer
