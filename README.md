@@ -1,4 +1,4 @@
-# Convolution neural network in C++
+# My Deep Learning Library in C++
 ## Implementations
 ### Layers
 - Convolution 2d layer
